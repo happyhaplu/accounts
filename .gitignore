@@ -1,0 +1,23 @@
+# ── Backend ────────────────────────────────────────────────────────────────
+backend/.env
+backend/bin/
+backend/*.exe
+backend/*.test
+
+# ── Frontend ───────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ── Database ───────────────────────────────────────────────────────────────
+db/*.sql.bak
+
+# ── OS / Editor ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
