@@ -70,3 +70,34 @@ logs-frontend: ## Tail frontend log
 .PHONY: clean
 clean: ## Remove build artefacts
 	rm -rf backend/bin frontend/dist
+
+# ── Tests ─────────────────────────────────────────────────────
+.PHONY: test
+test: test-backend test-frontend ## Run all tests (backend + frontend unit)
+
+.PHONY: test-backend
+test-backend: ## Run all Go tests (unit + integration)
+	cd backend && $(GO) test ./... -count=1 -timeout=120s
+
+.PHONY: test-backend-unit
+test-backend-unit: ## Run Go unit tests only (no DB)
+	cd backend && $(GO) test ./middleware/... ./handlers/... -v -count=1
+
+.PHONY: test-backend-integration
+test-backend-integration: ## Run Go integration tests (in-memory SQLite)
+	cd backend && $(GO) test ./integration_test/... -v -count=1 -timeout=120s
+
+.PHONY: test-frontend
+test-frontend: ## Run Vitest unit tests
+	cd frontend && npm run test
+
+.PHONY: test-frontend-coverage
+test-frontend-coverage: ## Run Vitest with coverage report
+	cd frontend && npm run test:coverage
+
+.PHONY: test-e2e
+test-e2e: ## Run Playwright E2E tests (requires dev server)
+	cd frontend && npm run test:e2e
+
+.PHONY: test-all
+test-all: test test-e2e ## Run every test suite including E2E

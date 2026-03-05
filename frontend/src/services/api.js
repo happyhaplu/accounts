@@ -13,10 +13,15 @@ api.interceptors.request.use((config) => {
 })
 
 // On 401 — clear stored credentials and redirect to login
+// But skip redirect for auth endpoints themselves (login, register, forgot-password)
+// so that wrong-credential errors can be shown in the UI.
+const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password']
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url ?? ''
+    const isAuthEndpoint = AUTH_PATHS.some((p) => url.includes(p))
+    if (err.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('oc_token')
       localStorage.removeItem('oc_user')
       window.location.href = '/login'
