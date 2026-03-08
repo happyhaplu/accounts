@@ -17,14 +17,20 @@ func Send(to, subject, htmlBody string) error {
 	if from == "" {
 		from = user
 	}
+	replyTo := os.Getenv("SMTP_REPLY_TO")
 
 	addr := net.JoinHostPort(host, port)
 	auth := smtp.PlainAuth("", user, pass, host)
 
 	// Build the raw RFC-2822 message with proper CRLF line endings.
+	replyToHeader := ""
+	if replyTo != "" {
+		replyToHeader = "Reply-To: " + replyTo + "\r\n"
+	}
 	msg := "MIME-Version: 1.0\r\n" +
 		"Content-Type: text/html; charset=UTF-8\r\n" +
 		"From: Outcraftly <" + from + ">\r\n" +
+		replyToHeader +
 		"To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n\r\n" +
 		htmlBody

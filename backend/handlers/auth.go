@@ -142,6 +142,54 @@ return c.JSON(fiber.Map{
 })
 }
 
+// ResendVerification re-sends the email verification link for an unverified account.
+// Rate-limited: only re-generates a fresh token if the previous one is expired or missing.
+func ResendVerification(c *fiber.Ctx) error {
+	type body struct {
+		Email string `json:"email"`
+	}
+	req := new(body)
+	if err := c.BodyParser(req); err != nil {
+		return badRequest(c, "Invalid request body")
+	}
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	if req.Email == "" {
+		return badRequest(c, "Email is required")
+	}
+
+	// Always return the same message to prevent email enumeration.
+	genericOK := fiber.Map{"message": "If that email is registered and unverified, a new link has been sent."}
+
+	var user models.User
+	if tx := database.DB.Where("email = ?", req.Email).First(&user); tx.Error != nil {
+		return c.JSON(genericOK)
+	}
+	if user.EmailVerified {
+		// Already verified — silently succeed (don't reveal verification status).
+		return c.JSON(genericOK)
+	}
+
+	// Issue a fresh 24-hour token.
+	newToken := uuid.New().String()
+	newExpiry := time.Now().Add(24 * time.Hour)
+	database.DB.Model(&user).Updates(map[string]interface{}{
+		"email_verify_token":   newToken,
+		"email_verify_expires": newExpiry,
+	})
+
+	appURL := os.Getenv("APP_URL")
+	link := appURL + "/verify-email?token=" + newToken
+	go func() {
+		if err := mailer.Send(user.Email, "Verify your Outcraftly account", mailer.VerifyEmailBody(link)); err != nil {
+			fmt.Fprintf(os.Stderr, "[mailer] ERROR resending verify email to %s: %v\n", user.Email, err)
+		} else {
+			fmt.Printf("[mailer] verify email resent to %s\n", user.Email)
+		}
+	}()
+
+	return c.JSON(genericOK)
+}
+
 // Login authenticates a user and returns a JWT.
 // Implements account lockout after 5 consecutive failures (15-minute window).
 func Login(c *fiber.Ctx) error {

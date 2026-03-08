@@ -323,14 +323,33 @@
             <span class="info-row-label">Member since</span>
             <span class="info-row-value">{{ formatDate(auth.user?.created_at) }}</span>
           </div>
-          <div class="info-row">
+          <div class="info-row" :class="{ 'info-row-tall': !auth.user?.email_verified }">
             <span class="info-row-label">Email verified</span>
-            <span class="info-row-value" :class="auth.user?.email_verified ? 'text-green' : 'text-orange'">
-              <svg v-if="auth.user?.email_verified" width="13" height="13" viewBox="0 0 24 24" fill="none"
+            <span v-if="auth.user?.email_verified" class="info-row-value text-green">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              {{ auth.user?.email_verified ? 'Verified' : 'Not verified' }}
+              Verified
+            </span>
+            <span v-else class="info-row-value-col">
+              <span class="text-orange" style="display:flex;align-items:center;gap:5px;font-size:0.875rem;font-weight:600">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Not verified
+              </span>
+              <span v-if="resendMsg" class="resend-msg" :class="resendMsg.type">{{ resendMsg.text }}</span>
+              <button v-else class="btn-resend" :disabled="resendLoading" @click="resendVerification">
+                <svg v-if="resendLoading" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                     class="spin">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                {{ resendLoading ? 'Sending…' : 'Resend verification email' }}
+              </button>
             </span>
           </div>
           <div class="info-row">
@@ -463,6 +482,25 @@ async function changePassword() {
     pwError.value = err.response?.data?.error ?? 'Failed to update password. Please try again.'
   } finally {
     pwLoading.value = false
+  }
+}
+
+// ── Resend verification ───────────────────────────────────────────────────────
+const resendLoading = ref(false)
+const resendMsg     = ref(null)   // { type: 'ok'|'err', text: string }
+
+async function resendVerification() {
+  resendLoading.value = true
+  resendMsg.value     = null
+  try {
+    await authAPI.resendVerification({ email: auth.user?.email })
+    resendMsg.value = { type: 'ok', text: 'Verification email sent — check your inbox.' }
+  } catch {
+    resendMsg.value = { type: 'err', text: 'Failed to send. Please try again.' }
+  } finally {
+    resendLoading.value = false
+    // Auto-clear after 8 seconds
+    setTimeout(() => { resendMsg.value = null }, 8000)
   }
 }
 
@@ -664,4 +702,27 @@ function formatDate(iso) {
 }
 .text-green  { color: #1e8e3e; }
 .text-orange { color: #e37400; }
+
+/* Resend verification */
+.info-row-tall { align-items: flex-start; padding-top: 1.1rem; padding-bottom: 1.1rem; }
+.info-row-value-col {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.btn-resend {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px; border-radius: 7px;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  border: 1.5px solid #e37400; color: #e37400; background: #fff9f0;
+  transition: background .15s, color .15s;
+}
+.btn-resend:hover:not(:disabled) { background: #fff0d6; }
+.btn-resend:disabled { opacity: 0.6; cursor: not-allowed; }
+.resend-msg {
+  font-size: 0.78rem; font-weight: 600; padding: 4px 10px;
+  border-radius: 6px;
+}
+.resend-msg.ok  { background: #e6f4ea; color: #1e8e3e; }
+.resend-msg.err { background: #fce8e6; color: #c5221f; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .8s linear infinite; }
 </style>

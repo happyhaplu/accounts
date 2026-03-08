@@ -14,8 +14,27 @@
         <h1>Check your inbox</h1>
         <p>We sent a verification link to <strong>{{ registeredEmail }}</strong>.<br>Click it to activate your account.</p>
       </div>
-      <div class="form-actions" style="margin-top:24px; justify-content: flex-start;">
+
+      <div v-if="resendMsg" class="alert" :class="resendMsg.type === 'ok' ? 'alert-success' : 'alert-error'" style="margin-top:20px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline v-if="resendMsg.type === 'ok'" points="20 6 9 17 4 12"/>
+          <template v-else><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></template>
+        </svg>
+        {{ resendMsg.text }}
+      </div>
+
+      <div class="form-actions" style="margin-top:20px; flex-direction:column; align-items:flex-start; gap:12px">
         <router-link to="/login" class="link-btn">← Back to sign in</router-link>
+        <p style="font-size:0.82rem; color:#5f6368; margin:0">Didn't receive it? Check spam or</p>
+        <button class="btn-resend" :disabled="resendLoading" @click="resendEmail">
+          <svg v-if="resendLoading" width="13" height="13" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+               class="spin">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+          {{ resendLoading ? 'Sending…' : 'Resend verification email' }}
+        </button>
       </div>
     </template>
 
@@ -113,12 +132,28 @@ import { ref, computed } from 'vue'
 import { authAPI } from '../services/api'
 import AuthLayout from '../layouts/AuthLayout.vue'
 
-const form           = ref({ email: '', password: '', confirm: '' })
-const showPw         = ref(false)
-const loading        = ref(false)
-const error          = ref('')
-const registered     = ref(false)
+const form            = ref({ email: '', password: '', confirm: '' })
+const showPw          = ref(false)
+const loading         = ref(false)
+const error           = ref('')
+const registered      = ref(false)
 const registeredEmail = ref('')
+const resendLoading   = ref(false)
+const resendMsg       = ref(null)   // { type: 'ok'|'err', text: string }
+
+async function resendEmail() {
+  resendLoading.value = true
+  resendMsg.value     = null
+  try {
+    await authAPI.resendVerification({ email: registeredEmail.value })
+    resendMsg.value = { type: 'ok', text: 'A new link has been sent — check your inbox.' }
+  } catch {
+    resendMsg.value = { type: 'err', text: 'Failed to send. Please try again.' }
+  } finally {
+    resendLoading.value = false
+    setTimeout(() => { resendMsg.value = null }, 8000)
+  }
+}
 
 const strength = computed(() => {
   const p = form.value.password
@@ -162,4 +197,23 @@ async function submit() {
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px;
 }
+.btn-resend {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 16px; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--blue, #1a73e8);
+  color: var(--blue, #1a73e8); background: var(--blue-light, #e8f0fe);
+  transition: background .15s;
+}
+.btn-resend:hover:not(:disabled) { background: #d2e3fc; }
+.btn-resend:disabled { opacity: 0.6; cursor: not-allowed; }
+.alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 8px;
+  font-size: 0.84rem; font-weight: 500;
+}
+.alert-success { background: #e6f4ea; color: #1e8e3e; }
+.alert-error   { background: #fce8e6; color: #c5221f; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .8s linear infinite; }
 </style>

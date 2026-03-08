@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
 // On 401 — clear stored credentials and redirect to login
 // But skip redirect for auth endpoints themselves (login, register, forgot-password)
 // so that wrong-credential errors can be shown in the UI.
-const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password']
+const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/auth/resend-verification']
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -32,6 +32,7 @@ api.interceptors.response.use(
 
 // ── Named endpoint helpers ──────────────────────────────────────────────────
 export const authAPI = {
+  resendVerification: (data) => api.post('/auth/resend-verification', data),
   register:       (data) => api.post('/auth/register',        data),
   verifyEmail:    (token) => api.get('/auth/verify-email',    { params: { token } }),
   login:          (data) => api.post('/auth/login',           data),
