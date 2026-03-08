@@ -8,10 +8,23 @@ import (
 )
 
 // Setup registers all API routes on the Fiber app.
+//
+// Middleware strategy
+// ───────────────────
+// Fiber's Group(prefix, handlers...) registers those handlers as USE
+// middleware for "<prefix>/*", meaning they fire for every request whose
+// path starts with that prefix — regardless of which group the concrete
+// route was added to later.
+//
+// Therefore we NEVER use an empty-string prefix group for JWT protection:
+//   api.Group("", Protected())   ← would match /api/v1/admin/* too!
+//
+// Instead each logical section owns its own path prefix and carries only
+// the middleware it needs.
 func Setup(app *fiber.App) {
 	api := app.Group("/api/v1")
 
-	// Health check
+	// ── Health check ─────────────────────────────────────────────
 	api.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status":  "ok",
@@ -19,7 +32,7 @@ func Setup(app *fiber.App) {
 		})
 	})
 
-	// ── Public auth routes ──────────────────────────────────────
+	// ── Public auth routes ────────────────────────────────────────
 	auth := api.Group("/auth")
 	auth.Post("/register",        handlers.Register)
 	auth.Get("/verify-email",     handlers.VerifyEmail)
@@ -28,62 +41,57 @@ func Setup(app *fiber.App) {
 	auth.Post("/forgot-password", handlers.ForgotPassword)
 	auth.Post("/reset-password",  handlers.ResetPassword)
 
-	// ── Stripe Webhook (public — Stripe signs the body, no JWT) ─
-	// Must be before the Protected() group so Fiber reads the raw body.
+	// ── Stripe Webhook (public — Stripe signs the body, no JWT) ──
 	// stripe listen --forward-to localhost:8080/api/v1/billing/webhook
 	api.Post("/billing/webhook", handlers.HandleStripeWebhook)
 
-	// ── Protected routes (require valid JWT) ────────────────────
-	protected := api.Group("", middleware.Protected())
-	protected.Get("/profile",               handlers.GetProfile)
-	protected.Post("/profile",              handlers.UpdateProfile)
-	protected.Post("/auth/change-password", handlers.ChangePassword)
+	// ── Public invite preview ─────────────────────────────────────
+	api.Get("/invites/preview", handlers.PreviewInvite)
 
-	// ── Workspace routes ────────────────────────────────────────
-	protected.Get("/workspaces",                              handlers.ListWorkspaces)
-	protected.Post("/workspaces",                             handlers.CreateWorkspace)
-	protected.Get("/workspaces/:id",                          handlers.GetWorkspace)
-	protected.Post("/workspaces/:id/members",                 handlers.AddMember)
-	protected.Delete("/workspaces/:id/members/:userID",       handlers.RemoveMember)
-	// Legacy single-workspace route (kept for backwards compat)
-	protected.Get("/workspace",                               handlers.GetWorkspace)
-
-	// ── Invite routes ────────────────────────────────────────────
-	// Protected (owner only — send/list/revoke)
-	protected.Post("/workspaces/:id/invites",                 handlers.SendInvite)
-	protected.Get("/workspaces/:id/invites",                  handlers.ListInvites)
-	protected.Delete("/workspaces/:id/invites/:inviteID",     handlers.RevokeInvite)
-	// Protected — accept (requires logged-in user whose email matches invite)
-	protected.Post("/invites/accept",                         handlers.AcceptInvite)
-	// Public — preview invite info (no auth, used before login/register)
-	api.Get("/invites/preview",                               handlers.PreviewInvite)
-
-	// ── Product registry ─────────────────────────────────────────
-	// Any authenticated user — list active products
-	protected.Get("/products", handlers.ListProducts)
-	// Hidden admin panel — requires X-Admin-Secret header
+	// ── Admin routes (X-Admin-Secret only, no JWT) ────────────────
+	// Uses its own distinct prefix "/admin" so its USE middleware does
+	// NOT overlap with any user-facing prefix below.
 	admin := api.Group("/admin", middleware.AdminOnly())
 	admin.Get("/products",        handlers.AdminListProducts)
 	admin.Post("/products",       handlers.CreateProduct)
 	admin.Patch("/products/:id",  handlers.UpdateProduct)
 	admin.Delete("/products/:id", handlers.DeactivateProduct)
+	admin.Get("/subscriptions",   handlers.AdminListSubscriptions)
+	admin.Get("/billing",         handlers.AdminBillingOverview)
 
-	// ── Subscription routes ───────────────────────────────────────
-	// Workspace-scoped (owner or member)
-	protected.Post("/workspaces/:id/subscriptions",             handlers.CreateSubscription)
-	protected.Get("/workspaces/:id/subscriptions",              handlers.ListSubscriptions)
-	protected.Get("/workspaces/:id/subscriptions/access",       handlers.CheckAccess)
-	protected.Delete("/workspaces/:id/subscriptions/:subID",    handlers.CancelSubscription)
-	// Admin — filterable list of all subscriptions
-	admin.Get("/subscriptions", handlers.AdminListSubscriptions)
+	// ── Protected: profile ────────────────────────────────────────
+	// Inline middleware so we avoid a catch-all USE handler.
+	p := middleware.Protected()
+	api.Get("/profile",               p, handlers.GetProfile)
+	api.Post("/profile",              p, handlers.UpdateProfile)
+	api.Post("/auth/change-password", p, handlers.ChangePassword)
+	// Legacy single-workspace lookup
+	api.Get("/workspace", p, handlers.GetWorkspace)
+	// Products list (authenticated users)
+	api.Get("/products", p, handlers.ListProducts)
+	// Accept invite (user must be logged in)
+	api.Post("/invites/accept", p, handlers.AcceptInvite)
 
-        // ── Billing routes ────────────────────────────────────────────
-	// Protected — workspace billing (owner only inside handlers)
-	protected.Get("/workspaces/:id/billing",          handlers.GetBillingStatus)
-	protected.Post("/workspaces/:id/billing/checkout", handlers.CreateCheckoutSession)
-	protected.Post("/workspaces/:id/billing/portal",   handlers.CreatePortalSession)
-	protected.Post("/workspaces/:id/billing/sync",     handlers.SyncBilling)
-        // Admin — billing overview
-        admin.Get("/billing", handlers.AdminBillingOverview)
-
+	// ── Protected: workspace routes ───────────────────────────────
+	ws := api.Group("/workspaces", middleware.Protected())
+	ws.Get("",                           handlers.ListWorkspaces)
+	ws.Post("",                          handlers.CreateWorkspace)
+	ws.Get("/:id",                       handlers.GetWorkspace)
+	ws.Post("/:id/members",              handlers.AddMember)
+	ws.Delete("/:id/members/:userID",    handlers.RemoveMember)
+	// Invites (workspace-scoped)
+	ws.Post("/:id/invites",              handlers.SendInvite)
+	ws.Get("/:id/invites",               handlers.ListInvites)
+	ws.Delete("/:id/invites/:inviteID",  handlers.RevokeInvite)
+	// Subscriptions
+	ws.Post("/:id/subscriptions",        handlers.CreateSubscription)
+	ws.Get("/:id/subscriptions",         handlers.ListSubscriptions)
+	ws.Get("/:id/subscriptions/access",  handlers.CheckAccess)
+	ws.Delete("/:id/subscriptions/:subID", handlers.CancelSubscription)
+	// Billing
+	ws.Get("/:id/billing",               handlers.GetBillingStatus)
+	ws.Post("/:id/billing/checkout",     handlers.CreateCheckoutSession)
+	ws.Post("/:id/billing/portal",       handlers.CreatePortalSession)
+	ws.Post("/:id/billing/sync",         handlers.SyncBilling)
 }
+
