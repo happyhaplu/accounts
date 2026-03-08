@@ -393,9 +393,13 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 
 	if secret != "" {
 		// Verify the Stripe-Signature header — prevents spoofed webhooks.
+		// IgnoreAPIVersionMismatch: account may be on an older Stripe API version
+		// than the SDK expects; signature verification is what matters for security.
 		sig := c.Get("Stripe-Signature")
 		var err error
-		event, err = webhook.ConstructEvent(payload, sig, secret)
+		event, err = webhook.ConstructEventWithOptions(payload, sig, secret,
+			webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true},
+		)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[webhook] invalid signature: %v\n", err)
 			return c.Status(fiber.StatusBadRequest).JSON(errJSON("Invalid webhook signature"))
