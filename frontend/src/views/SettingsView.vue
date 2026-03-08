@@ -364,7 +364,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { authAPI } from '../services/api'
 
@@ -386,7 +386,7 @@ const profile = ref({
 
 let profileSnapshot = { ...profile.value }
 
-onMounted(async () => {
+async function fetchProfile() {
   try {
     const { data } = await authAPI.getProfile()
     const u = data.user
@@ -406,6 +406,21 @@ onMounted(async () => {
   } finally {
     profileLoading.value = false
   }
+}
+
+// Re-fetch when the user switches back to this tab (e.g. verified email in
+// another tab — their Pinia store here is stale until we re-sync from the API).
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') fetchProfile()
+}
+
+onMounted(() => {
+  fetchProfile()
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
 })
 
 const canSaveProfile = computed(() =>
