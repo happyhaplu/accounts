@@ -28,5 +28,17 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('oc_user')
   }
 
+  // Cross-tab sync: when another tab writes oc_user / oc_token (e.g. after
+  // email verification), update this tab's reactive state immediately so any
+  // component bound to auth.user re-renders without a page refresh.
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'oc_user') {
+      user.value = e.newValue ? JSON.parse(e.newValue) : null
+    }
+    if (e.key === 'oc_token') {
+      token.value = e.newValue ?? null
+    }
+  })
+
   return { token, user, isAuthenticated, setAuth, updateUser, logout }
 })
