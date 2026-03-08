@@ -43,6 +43,79 @@
         </div>
       </section>
 
+      <!-- ── Products & Plans ─────────────────────────────────── -->
+      <section v-if="ws" class="section">
+        <div class="section-head">
+          <div class="section-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <div>
+            <h2>Products &amp; Plans</h2>
+            <p class="section-sub">Subscribe to products for <strong>{{ ws.name }}</strong>.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div v-if="prodLoading" class="profile-skeleton">
+            <div class="skeleton-row" style="height:72px"></div>
+            <div class="skeleton-row" style="height:72px"></div>
+            <div class="skeleton-row" style="height:72px"></div>
+          </div>
+          <div v-else-if="prodError" class="alert alert-error">{{ prodError }}</div>
+          <div v-else-if="products.length === 0" class="sub-empty">
+            <p class="sub-empty-title">No products configured.</p>
+          </div>
+          <template v-else>
+            <div class="prod-list">
+              <div v-for="prod in products" :key="prod.id" class="prod-row">
+                <!-- icon -->
+                <div class="prod-icon" :data-name="prod.name">{{ prodInitial(prod.name) }}</div>
+
+                <!-- info -->
+                <div class="prod-info">
+                  <div class="prod-name">{{ formatProductName(prod.name) }}</div>
+                  <div class="prod-desc">{{ prod.description || 'No description.' }}</div>
+                </div>
+
+                <!-- status / action -->
+                <div class="prod-action">
+                  <template v-if="activeSubFor(prod.id)">
+                    <span class="sub-badge active">✓ Active</span>
+                    <div class="prod-renew">
+                      Renews {{ formatDate(activeSubFor(prod.id).current_period_end) }}
+                    </div>
+                  </template>
+                  <template v-else-if="ws.my_role === 'owner' && prod.stripe_price_id">
+                    <button
+                      class="btn-subscribe"
+                      :disabled="checkoutLoading === prod.id"
+                      @click="doCheckout(prod)"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      {{ checkoutLoading === prod.id ? 'Redirecting…' : 'Subscribe' }}
+                    </button>
+                  </template>
+                  <template v-else-if="ws.my_role !== 'owner'">
+                    <span class="prod-no-sub">Not subscribed</span>
+                  </template>
+                  <template v-else>
+                    <!-- owner, no price_id: product not yet priced -->
+                    <span class="prod-no-price">Price not configured</span>
+                  </template>
+                </div>
+              </div>
+            </div>
+            <div v-if="checkoutError" class="alert alert-error" style="margin-top:1rem;">{{ checkoutError }}</div>
+          </template>
+        </div>
+      </section>
+
       <!-- ── Billing ──────────────────────────────────────────── -->
       <section v-if="ws" class="section">
         <div class="section-head">
@@ -255,6 +328,7 @@ async function switchWorkspace(id) {
   subscriptions.value = []
   cancelError.value   = ''
   cancelSuccess.value = ''
+  checkoutError.value = ''
   try {
     const { data } = await authAPI.getWorkspace(id)
     ws.value = data.workspace
@@ -266,6 +340,52 @@ async function switchWorkspace(id) {
     loadSubscriptions(id)
   } catch {
     wsListError.value = 'Failed to load workspace details.'
+  }
+}
+
+// ── Products ───────────────────────────────────────────────────────────────────
+const products       = ref([])
+const prodLoading    = ref(false)
+const prodError      = ref('')
+const checkoutLoading = ref('')
+const checkoutError  = ref('')
+
+onMounted(async () => {
+  // Load products list once (same for all workspaces)
+  prodLoading.value = true
+  try {
+    const { data } = await authAPI.listProducts()
+    products.value = data.products ?? []
+  } catch {
+    prodError.value = 'Failed to load products.'
+  } finally {
+    prodLoading.value = false
+  }
+})
+
+// Returns the active Subscription for a given product ID, or null
+function activeSubFor(productId) {
+  return subscriptions.value.find(
+    s => s.product_id === productId && s.status === 'active'
+  ) ?? null
+}
+
+async function doCheckout(prod) {
+  checkoutLoading.value = prod.id
+  checkoutError.value   = ''
+  try {
+    const { data } = await authAPI.createCheckoutSession(ws.value.id, {
+      price_id:    prod.stripe_price_id,
+      product_id:  prod.id,
+      plan_name:   'standard',
+      success_url: window.location.origin + '/billing?billing=success',
+      cancel_url:  window.location.origin + '/billing?billing=canceled',
+    })
+    // Redirect to Stripe Checkout
+    window.location.href = data.url
+  } catch (err) {
+    checkoutError.value   = err.response?.data?.error ?? 'Failed to start checkout. Try again.'
+    checkoutLoading.value = ''
   }
 }
 
@@ -368,6 +488,11 @@ function formatDate(iso) {
 function formatProductName(name) {
   if (!name) return 'Unknown product'
   return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function prodInitial(name) {
+  if (!name) return '?'
+  return name[0].toUpperCase()
 }
 
 function subStatusLabel(status) {
@@ -569,4 +694,42 @@ function subStatusLabel(status) {
 }
 .cancel-btn:hover:not(:disabled) { background: #fce8e6; }
 .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Products & Plans ───────────────────────────────────────────────────── */
+.prod-list { display: flex; flex-direction: column; gap: 0; }
+.prod-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0; border-bottom: 1px solid var(--border, #dadce0);
+}
+.prod-row:last-child { border-bottom: none; }
+
+.prod-icon {
+  width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+  font-size: 16px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--blue-light, #e8f0fe); color: var(--blue, #1a73e8);
+}
+.prod-icon[data-name="cold_email"] { background: #e8f0fe; color: #1a73e8; }
+.prod-icon[data-name="linkedin"]   { background: #e8f5e9; color: #1b7e34; }
+.prod-icon[data-name="warmup"]     { background: #fff3e0; color: #e65100; }
+
+.prod-info  { flex: 1; min-width: 0; }
+.prod-name  { font-size: 0.9rem; font-weight: 700; color: var(--text, #202124); }
+.prod-desc  { font-size: 0.78rem; color: var(--text-muted, #5f6368); margin-top: 2px; line-height: 1.45; }
+
+.prod-action { flex-shrink: 0; text-align: right; min-width: 110px; }
+.prod-renew  { font-size: 0.72rem; color: var(--text-muted, #5f6368); margin-top: 3px; }
+.prod-no-sub   { font-size: 0.78rem; color: var(--text-muted, #5f6368); }
+.prod-no-price { font-size: 0.72rem; color: #e65100; background: #fff3e0; padding: 3px 10px; border-radius: 8px; }
+
+.btn-subscribe {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 32px; padding: 0 14px; border-radius: 8px;
+  background: var(--blue, #1a73e8); color: #fff;
+  border: none; font-size: 0.8rem; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+  font-family: inherit;
+}
+.btn-subscribe:hover:not(:disabled) { background: #1557b0; }
+.btn-subscribe:disabled { opacity: 0.55; cursor: not-allowed; }
 </style>

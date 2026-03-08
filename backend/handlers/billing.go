@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	portalsession "github.com/stripe/stripe-go/v76/billingportal/session"
 	stripecustomer "github.com/stripe/stripe-go/v76/customer"
 	stripesubscription "github.com/stripe/stripe-go/v76/subscription"
+	"github.com/stripe/stripe-go/v76/webhook"
 )
 
 // stripeReady returns false and logs a warning if the Stripe key is not set.
@@ -365,4 +367,181 @@ func stripeStatusToOurs(stripeStatus string) string {
 	default: // past_due, unpaid, incomplete, incomplete_expired
 		return "expired"
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/v1/billing/webhook  (PUBLIC — Stripe signs the payload)
+// Handles Stripe event notifications so subscriptions are provisioned
+// automatically — no manual "Refresh" button needed.
+//
+// Events handled:
+//   checkout.session.completed       → provision subscription after payment
+//   customer.subscription.updated    → sync status + renewal date
+//   customer.subscription.deleted    → mark canceled
+//   invoice.payment_failed           → mark subscription expired
+//
+// Set STRIPE_WEBHOOK_SECRET to the whsec_... value from:
+//   stripe listen --forward-to localhost:8080/api/v1/billing/webhook
+// or from your Stripe Dashboard > Webhooks.
+// ─────────────────────────────────────────────────────────────────────────────
+
+func HandleStripeWebhook(c *fiber.Ctx) error {
+	secret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+	payload := c.Body()
+
+	var event stripe.Event
+
+	if secret != "" {
+		// Verify the Stripe-Signature header — prevents spoofed webhooks.
+		sig := c.Get("Stripe-Signature")
+		var err error
+		event, err = webhook.ConstructEvent(payload, sig, secret)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[webhook] invalid signature: %v\n", err)
+			return c.Status(fiber.StatusBadRequest).JSON(errJSON("Invalid webhook signature"))
+		}
+	} else {
+		// STRIPE_WEBHOOK_SECRET not set — accept without verification (dev/testing only).
+		fmt.Println("[webhook] ⚠  STRIPE_WEBHOOK_SECRET not set — signature verification skipped")
+		if err := json.Unmarshal(payload, &event); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(errJSON("Invalid webhook payload"))
+		}
+	}
+
+	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
+
+	switch event.Type {
+
+	case "checkout.session.completed":
+		var session stripe.CheckoutSession
+		if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
+			fmt.Fprintf(os.Stderr, "[webhook] parse checkout.session.completed: %v\n", err)
+			break
+		}
+		webhookCheckoutCompleted(&session)
+
+	case "customer.subscription.updated":
+		var sub stripe.Subscription
+		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+			fmt.Fprintf(os.Stderr, "[webhook] parse subscription.updated: %v\n", err)
+			break
+		}
+		webhookSyncSubscription(&sub)
+
+	case "customer.subscription.deleted":
+		var sub stripe.Subscription
+		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
+			fmt.Fprintf(os.Stderr, "[webhook] parse subscription.deleted: %v\n", err)
+			break
+		}
+		webhookMarkCanceled(sub.ID)
+
+	case "invoice.payment_failed":
+		var inv stripe.Invoice
+		if err := json.Unmarshal(event.Data.Raw, &inv); err != nil {
+			fmt.Fprintf(os.Stderr, "[webhook] parse invoice.payment_failed: %v\n", err)
+			break
+		}
+		if inv.Subscription != nil {
+			webhookMarkCanceled(inv.Subscription.ID)
+		}
+
+	default:
+		fmt.Printf("[webhook] unhandled event type: %s\n", event.Type)
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+// webhookCheckoutCompleted is called after a successful Stripe Checkout.
+// It fetches the subscription from Stripe and provisions it in our DB.
+func webhookCheckoutCompleted(session *stripe.CheckoutSession) {
+	if session.Subscription == nil {
+		// Payment-mode (one-time charge) — no subscription object created.
+		fmt.Printf("[webhook] checkout.session.completed for payment mode session %s — no sub to provision\n", session.ID)
+		return
+	}
+
+	// Fetch the full subscription to get metadata + period details.
+	sub, err := stripesubscription.Get(session.Subscription.ID, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[webhook] fetch subscription %s: %v\n", session.Subscription.ID, err)
+		return
+	}
+	webhookSyncSubscription(sub)
+}
+
+// webhookSyncSubscription upserts a Subscription row from a Stripe Subscription object.
+func webhookSyncSubscription(s *stripe.Subscription) {
+	ssID      := s.ID
+	status    := stripeStatusToOurs(string(s.Status))
+	periodEnd := time.Unix(s.CurrentPeriodEnd, 0)
+	planName  := s.Metadata["plan_name"]
+	if planName == "" {
+		planName = "standard"
+	}
+	prodIDStr := s.Metadata["product_id"]
+	wsIDStr   := s.Metadata["workspace_id"]
+
+	// Update an existing row if we already have it.
+	var existing models.Subscription
+	if database.DB.Where("stripe_subscription_id = ?", ssID).First(&existing).Error == nil {
+		database.DB.Model(&existing).Updates(map[string]interface{}{
+			"status":             status,
+			"current_period_end": periodEnd,
+			"plan_name":          planName,
+		})
+		fmt.Printf("[webhook] updated subscription %s → %s\n", ssID, status)
+		return
+	}
+
+	// New subscription row — metadata must carry workspace_id + product_id.
+	if wsIDStr == "" || prodIDStr == "" {
+		fmt.Printf("[webhook] sub %s missing metadata (ws=%q prod=%q) — cannot provision\n", ssID, wsIDStr, prodIDStr)
+		return
+	}
+
+	wsID, wErr := uuid.Parse(wsIDStr)
+	prodID, pErr := uuid.Parse(prodIDStr)
+	if wErr != nil || pErr != nil {
+		fmt.Printf("[webhook] sub %s invalid UUID metadata — skip\n", ssID)
+		return
+	}
+
+	// Ensure BillingCustomer row exists for this workspace.
+	var bc models.BillingCustomer
+	if database.DB.Where("workspace_id = ?", wsID).First(&bc).Error != nil {
+		if s.Customer != nil {
+			bc = models.BillingCustomer{
+				WorkspaceID:      wsID,
+				StripeCustomerID: s.Customer.ID,
+			}
+			database.DB.Create(&bc)
+		}
+	}
+
+	// Deactivate any previous active subscription for the same product.
+	database.DB.Model(&models.Subscription{}).
+		Where("workspace_id = ? AND product_id = ? AND status = 'active'", wsID, prodID).
+		Update("status", "canceled")
+
+	newSub := models.Subscription{
+		WorkspaceID:          wsID,
+		ProductID:            prodID,
+		PlanName:             planName,
+		Status:               status,
+		CurrentPeriodEnd:     periodEnd,
+		StripeSubscriptionID: &ssID,
+	}
+	database.DB.Create(&newSub)
+	fmt.Printf("[webhook] provisioned subscription %s for workspace=%s product=%s\n", ssID, wsIDStr, prodIDStr)
+}
+
+// webhookMarkCanceled sets the matching subscription's status to "canceled".
+func webhookMarkCanceled(stripeSubID string) {
+	result := database.DB.
+		Model(&models.Subscription{}).
+		Where("stripe_subscription_id = ?", stripeSubID).
+		Update("status", "canceled")
+	fmt.Printf("[webhook] canceled subscription %s (%d rows affected)\n", stripeSubID, result.RowsAffected)
 }

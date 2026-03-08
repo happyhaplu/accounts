@@ -28,6 +28,11 @@ func Setup(app *fiber.App) {
 	auth.Post("/forgot-password", handlers.ForgotPassword)
 	auth.Post("/reset-password",  handlers.ResetPassword)
 
+	// ── Stripe Webhook (public — Stripe signs the body, no JWT) ─
+	// Must be before the Protected() group so Fiber reads the raw body.
+	// stripe listen --forward-to localhost:8080/api/v1/billing/webhook
+	api.Post("/billing/webhook", handlers.HandleStripeWebhook)
+
 	// ── Protected routes (require valid JWT) ────────────────────
 	protected := api.Group("", middleware.Protected())
 	protected.Get("/profile",               handlers.GetProfile)

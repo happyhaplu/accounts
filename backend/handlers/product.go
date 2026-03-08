@@ -42,8 +42,9 @@ func AdminListProducts(c *fiber.Ctx) error {
 
 func CreateProduct(c *fiber.Ctx) error {
 	type body struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
+		Name          string  `json:"name"`
+		Description   string  `json:"description"`
+		StripePriceID *string `json:"stripe_price_id"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -61,9 +62,10 @@ func CreateProduct(c *fiber.Ctx) error {
 	}
 
 	product := models.Product{
-		Name:        req.Name,
-		Description: strings.TrimSpace(req.Description),
-		IsActive:    true,
+		Name:          req.Name,
+		Description:   strings.TrimSpace(req.Description),
+		StripePriceID: req.StripePriceID,
+		IsActive:      true,
 	}
 	if err := database.DB.Create(&product).Error; err != nil {
 		return serverError(c, "Failed to create product")
@@ -89,9 +91,10 @@ func UpdateProduct(c *fiber.Ctx) error {
 	}
 
 	type body struct {
-		Name        *string `json:"name"`
-		Description *string `json:"description"`
-		IsActive    *bool   `json:"is_active"`
+		Name          *string `json:"name"`
+		Description   *string `json:"description"`
+		IsActive      *bool   `json:"is_active"`
+		StripePriceID *string `json:"stripe_price_id"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -111,6 +114,9 @@ func UpdateProduct(c *fiber.Ctx) error {
 	}
 	if req.IsActive != nil {
 		updates["is_active"] = *req.IsActive
+	}
+	if req.StripePriceID != nil {
+		updates["stripe_price_id"] = *req.StripePriceID
 	}
 
 	if len(updates) == 0 {

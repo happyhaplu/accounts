@@ -61,6 +61,9 @@ export const authAPI = {
   checkAccess:         (wsId, prodId) => api.get(`/workspaces/${wsId}/subscriptions/access`, { params: { product_id: prodId } }),
   cancelSubscription:  (wsId, subId)  => api.delete(`/workspaces/${wsId}/subscriptions/${subId}`),
 
+  // Products
+  listProducts: () => api.get('/products'),
+
   // Billing (Stripe)
   getBillingStatus:       (wsId)       => api.get(`/workspaces/${wsId}/billing`),
   createCheckoutSession:  (wsId, data) => api.post(`/workspaces/${wsId}/billing/checkout`, data),
