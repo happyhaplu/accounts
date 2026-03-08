@@ -390,6 +390,9 @@ onMounted(async () => {
   try {
     const { data } = await authAPI.getProfile()
     const u = data.user
+    // Always sync the auth store with fresh server data so email_verified
+    // (and any other field changed in another tab/session) is up to date.
+    auth.updateUser(u)
     profile.value = {
       name:             u.name              ?? '',
       companyName:      u.company_name      ?? '',
