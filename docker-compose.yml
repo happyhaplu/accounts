@@ -1,0 +1,65 @@
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${DB_USER:-outcraftly}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-outcraftly}
+      POSTGRES_DB:       ${DB_NAME:-accounts}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-outcraftly} -d ${DB_NAME:-accounts}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Go API backend ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT:                   ${PORT:-8080}
+      DB_HOST:                db               # service name above
+      DB_PORT:                5432
+      DB_USER:                ${DB_USER:-outcraftly}
+      DB_PASSWORD:            ${DB_PASSWORD:-outcraftly}
+      DB_NAME:                ${DB_NAME:-accounts}
+      JWT_SECRET:             ${JWT_SECRET}
+      ALLOW_ORIGINS:          ${ALLOW_ORIGINS}
+      ADMIN_SECRET:           ${ADMIN_SECRET}
+      SMTP_HOST:              ${SMTP_HOST}
+      SMTP_PORT:              ${SMTP_PORT:-587}
+      SMTP_USER:              ${SMTP_USER}
+      SMTP_PASS:              ${SMTP_PASS}
+      SMTP_FROM:              ${SMTP_FROM}
+      SMTP_REPLY_TO:          ${SMTP_REPLY_TO}
+      APP_URL:                ${APP_URL}
+      STRIPE_SECRET_KEY:      ${STRIPE_SECRET_KEY}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_WEBHOOK_SECRET:  ${STRIPE_WEBHOOK_SECRET}
+    ports:
+      - "${PORT:-8080}:8080"
+
+  # ── Vue frontend (nginx) ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
