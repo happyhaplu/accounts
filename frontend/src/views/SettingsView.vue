@@ -341,15 +341,49 @@
                 </svg>
                 Not verified
               </span>
-              <span v-if="resendMsg" class="resend-msg" :class="resendMsg.type">{{ resendMsg.text }}</span>
-              <button v-else class="btn-resend" :disabled="resendLoading" @click="resendVerification">
-                <svg v-if="resendLoading" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                     class="spin">
+
+              <!-- idle: send OTP button -->
+              <button v-if="verifyStep === 'idle'" class="btn-resend" :disabled="sendingOTP" @click="sendVerifyOTP">
+                <svg v-if="sendingOTP" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="spin">
                   <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                 </svg>
-                {{ resendLoading ? 'Sending…' : 'Resend verification email' }}
+                {{ sendingOTP ? 'Sending…' : 'Send verification code' }}
               </button>
+
+              <!-- otp: inline 6-box input -->
+              <template v-if="verifyStep === 'otp'">
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;width:100%">
+                  <div v-if="verifyOtpError" class="resend-msg err" style="width:100%;text-align:right">{{ verifyOtpError }}</div>
+                  <div class="otp-inputs-sm">
+                    <input
+                      v-for="i in 6" :key="i"
+                      :ref="el => { verifyOtpRefs[i-1] = el }"
+                      type="text" inputmode="numeric" pattern="[0-9]*"
+                      maxlength="1"
+                      class="otp-box-sm"
+                      :class="{ filled: verifyOtpDigits[i-1] }"
+                      :value="verifyOtpDigits[i-1]"
+                      @input="onVerifyOtpInput(i-1, $event)"
+                      @keydown="onVerifyOtpKeydown(i-1, $event)"
+                      @paste.prevent="onVerifyOtpPaste($event)"
+                    />
+                  </div>
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <button class="link-btn-sm" :disabled="resendLoading" @click="sendVerifyOTP">
+                      {{ resendLoading ? 'Sending…' : 'Resend' }}
+                    </button>
+                    <button class="btn-resend" style="border-color:var(--blue);color:var(--blue);background:var(--blue-light)"
+                            :disabled="verifyOtpValue.length < 6 || verifyOtpLoading" @click="submitVerifyOTP">
+                      <svg v-if="verifyOtpLoading" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="spin">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                      </svg>
+                      {{ verifyOtpLoading ? 'Verifying…' : 'Verify' }}
+                    </button>
+                  </div>
+                </div>
+              </template>
             </span>
           </div>
           <div class="info-row">
@@ -364,7 +398,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { authAPI } from '../services/api'
 
@@ -503,22 +537,67 @@ async function changePassword() {
   }
 }
 
-// ── Resend verification ───────────────────────────────────────────────────────
-const resendLoading = ref(false)
-const resendMsg     = ref(null)   // { type: 'ok'|'err', text: string }
+// ── Email verify OTP (inline in Settings) ────────────────────────────────────
+const verifyStep      = ref('idle')   // 'idle' | 'otp'
+const sendingOTP      = ref(false)
+const resendLoading   = ref(false)
+const verifyOtpDigits = ref(['', '', '', '', '', ''])
+const verifyOtpRefs   = ref([])
+const verifyOtpLoading = ref(false)
+const verifyOtpError   = ref('')
+const verifyOtpValue   = computed(() => verifyOtpDigits.value.join(''))
 
-async function resendVerification() {
+function onVerifyOtpInput(idx, e) {
+  const val = e.target.value.replace(/\D/g, '')
+  verifyOtpDigits.value[idx] = val.slice(-1)
+  if (val && idx < 5) nextTick(() => verifyOtpRefs.value[idx + 1]?.focus())
+}
+function onVerifyOtpKeydown(idx, e) {
+  if (e.key === 'Backspace' && !verifyOtpDigits.value[idx] && idx > 0) {
+    nextTick(() => verifyOtpRefs.value[idx - 1]?.focus())
+  }
+}
+function onVerifyOtpPaste(e) {
+  const text = (e.clipboardData || window.clipboardData).getData('text')
+  const digits = text.replace(/\D/g, '').slice(0, 6).split('')
+  digits.forEach((d, i) => { verifyOtpDigits.value[i] = d })
+  nextTick(() => verifyOtpRefs.value[Math.min(digits.length, 5)]?.focus())
+}
+
+async function sendVerifyOTP() {
+  sendingOTP.value  = true
   resendLoading.value = true
-  resendMsg.value     = null
+  verifyOtpError.value = ''
+  verifyOtpDigits.value = ['', '', '', '', '', '']
   try {
     await authAPI.resendVerification({ email: auth.user?.email })
-    resendMsg.value = { type: 'ok', text: 'Verification email sent — check your inbox.' }
+    verifyStep.value = 'otp'
+    nextTick(() => verifyOtpRefs.value[0]?.focus())
   } catch {
-    resendMsg.value = { type: 'err', text: 'Failed to send. Please try again.' }
+    verifyOtpError.value = 'Failed to send code. Please try again.'
   } finally {
+    sendingOTP.value    = false
     resendLoading.value = false
-    // Auto-clear after 8 seconds
-    setTimeout(() => { resendMsg.value = null }, 8000)
+  }
+}
+
+async function submitVerifyOTP() {
+  verifyOtpError.value   = ''
+  verifyOtpLoading.value = true
+  try {
+    const { data } = await authAPI.verifyEmailOTP({
+      email: auth.user?.email,
+      otp:   verifyOtpValue.value,
+    })
+    auth.setAuth(data.token, data.user)
+    verifyStep.value = 'idle'
+    verifyOtpDigits.value = ['', '', '', '', '', '']
+  } catch (err) {
+    verifyOtpError.value = err.response?.data?.error ?? 'Invalid code. Please try again.'
+    verifyOtpDigits.value = ['', '', '', '', '', '']
+    nextTick(() => verifyOtpRefs.value[0]?.focus())
+  } finally {
+    verifyOtpLoading.value = false
   }
 }
 
@@ -721,7 +800,7 @@ function formatDate(iso) {
 .text-green  { color: #1e8e3e; }
 .text-orange { color: #e37400; }
 
-/* Resend verification */
+/* Email verify inline OTP */
 .info-row-tall { align-items: flex-start; padding-top: 1.1rem; padding-bottom: 1.1rem; }
 .info-row-value-col {
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
@@ -735,12 +814,27 @@ function formatDate(iso) {
 }
 .btn-resend:hover:not(:disabled) { background: #fff0d6; }
 .btn-resend:disabled { opacity: 0.6; cursor: not-allowed; }
+.link-btn-sm {
+  font-size: 0.75rem; font-weight: 500; color: var(--blue); cursor: pointer;
+  background: none; border: none; padding: 0; text-decoration: underline;
+}
+.link-btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 .resend-msg {
-  font-size: 0.78rem; font-weight: 600; padding: 4px 10px;
-  border-radius: 6px;
+  font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;
 }
 .resend-msg.ok  { background: #e6f4ea; color: #1e8e3e; }
 .resend-msg.err { background: #fce8e6; color: #c5221f; }
+/* Compact OTP boxes for Settings inline */
+.otp-inputs-sm { display: flex; gap: 6px; }
+.otp-box-sm {
+  width: 34px; height: 40px;
+  border: 1.5px solid var(--border, #dadce0); border-radius: 7px;
+  font-size: 17px; font-weight: 700; text-align: center;
+  outline: none; background: #fff; color: var(--text, #202124);
+  transition: border-color .15s, box-shadow .15s; caret-color: transparent;
+}
+.otp-box-sm:focus { border-color: var(--blue, #1a73e8); box-shadow: 0 0 0 2px var(--blue-light, #e8f0fe); }
+.otp-box-sm.filled { border-color: var(--blue, #1a73e8); background: var(--blue-light, #e8f0fe); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin .8s linear infinite; }
 </style>

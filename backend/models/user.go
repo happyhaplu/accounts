@@ -13,10 +13,15 @@ type User struct {
 	Email               string     `gorm:"uniqueIndex;not null"  json:"email"`
 	PasswordHash        string     `gorm:"not null"              json:"-"`
 
-	// Email verification
-	EmailVerified       bool       `gorm:"default:false"         json:"email_verified"`
-	EmailVerifyToken    *string    `gorm:"index"                 json:"-"`
-	EmailVerifyExpires  *time.Time `                              json:"-"`
+// Email verification (legacy link fields kept for DB compat, use OTP fields below)
+        EmailVerified       bool       `gorm:"default:false"         json:"email_verified"`
+        EmailVerifyToken    *string    `gorm:"index"                 json:"-"`
+        EmailVerifyExpires  *time.Time `                              json:"-"`
+
+        // OTP — shared for email verification and password reset
+        OTPCode    *string    `gorm:"index" json:"-"`
+        OTPExpires *time.Time `              json:"-"`
+        OTPPurpose *string    `              json:"-"` // "email_verify" | "password_reset"
 
 	// Profile
 	Name             string `gorm:"default:''"`

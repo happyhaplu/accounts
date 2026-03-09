@@ -1,44 +1,65 @@
 <template>
   <AuthLayout>
 
-    <!-- ── Success: check inbox ───────────────────────── -->
-    <template v-if="registered">
+    <!-- ── Step: OTP verification ──────────────────────── -->
+    <template v-if="step === 'otp'">
       <div class="form-header">
-        <div class="inbox-icon">
+        <div class="otp-icon">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-            <polyline points="22,6 12,13 2,6"/>
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
           </svg>
         </div>
-        <h1>Check your inbox</h1>
-        <p>We sent a verification link to <strong>{{ registeredEmail }}</strong>.<br>Click it to activate your account.</p>
+        <h1>Enter verification code</h1>
+        <p>We sent a 6-digit code to <strong>{{ registeredEmail }}</strong>.<br>It expires in 10 minutes.</p>
       </div>
 
-      <div v-if="resendMsg" class="alert" :class="resendMsg.type === 'ok' ? 'alert-success' : 'alert-error'" style="margin-top:20px">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      <div v-if="otpError" class="alert alert-error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline v-if="resendMsg.type === 'ok'" points="20 6 9 17 4 12"/>
-          <template v-else><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></template>
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        {{ resendMsg.text }}
+        {{ otpError }}
       </div>
 
-      <div class="form-actions" style="margin-top:20px; flex-direction:column; align-items:flex-start; gap:12px">
-        <router-link to="/login" class="link-btn">← Back to sign in</router-link>
-        <p style="font-size:0.82rem; color:#5f6368; margin:0">Didn't receive it? Check spam or</p>
-        <button class="btn-resend" :disabled="resendLoading" @click="resendEmail">
-          <svg v-if="resendLoading" width="13" height="13" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-               class="spin">
+      <div class="otp-inputs">
+        <input
+          v-for="i in 6" :key="i"
+          :ref="el => { otpRefs[i-1] = el }"
+          type="text" inputmode="numeric" pattern="[0-9]*"
+          maxlength="1"
+          class="otp-box"
+          :class="{ filled: otpDigits[i-1] }"
+          :value="otpDigits[i-1]"
+          @input="onOtpInput(i-1, $event)"
+          @keydown="onOtpKeydown(i-1, $event)"
+          @paste.prevent="onOtpPaste($event)"
+        />
+      </div>
+
+      <div class="form-actions" style="flex-direction:column; align-items:stretch; gap:12px">
+        <button class="btn-primary" :disabled="otpValue.length < 6 || otpLoading" @click="verifyOTP">
+          <svg v-if="otpLoading" width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="spin">
             <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
           </svg>
-          {{ resendLoading ? 'Sending…' : 'Resend verification email' }}
+          <span>{{ otpLoading ? 'Verifying…' : 'Verify email' }}</span>
         </button>
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px">
+          <button class="link-btn" @click="step = 'form'">← Change email</button>
+          <button class="link-btn" :disabled="resendLoading" @click="resendOTP">
+            {{ resendLoading ? 'Sending…' : "Didn't get it? Resend" }}
+          </button>
+        </div>
+        <div v-if="resendMsg" class="alert" :class="resendMsg.type === 'ok' ? 'alert-success' : 'alert-error'">
+          {{ resendMsg.text }}
+        </div>
       </div>
     </template>
 
-    <!-- ── Registration form ──────────────────────────── -->
+    <!-- ── Step: Registration form ─────────────────────── -->
     <template v-else>
       <div class="form-header">
         <h1>Create your account</h1>
@@ -55,7 +76,6 @@
       </div>
 
       <form @submit.prevent="submit" novalidate>
-        <!-- Email -->
         <div class="field">
           <label for="email">Email address</label>
           <div class="input-wrap">
@@ -64,7 +84,6 @@
           </div>
         </div>
 
-        <!-- Password -->
         <div class="field">
           <label for="password">Password</label>
           <div class="input-wrap">
@@ -87,7 +106,6 @@
               </svg>
             </button>
           </div>
-          <!-- Password strength -->
           <div v-if="form.password" class="pw-strength">
             <div class="pw-bars">
               <div v-for="i in 4" :key="i" class="pw-bar"
@@ -97,7 +115,6 @@
           </div>
         </div>
 
-        <!-- Confirm password -->
         <div class="field">
           <label for="confirm">Confirm password</label>
           <div class="input-wrap">
@@ -128,30 +145,82 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { authAPI } from '../services/api'
 import AuthLayout from '../layouts/AuthLayout.vue'
 
+const router = useRouter()
+const auth   = useAuthStore()
+
+const step            = ref('form')
 const form            = ref({ email: '', password: '', confirm: '' })
 const showPw          = ref(false)
 const loading         = ref(false)
 const error           = ref('')
-const registered      = ref(false)
 const registeredEmail = ref('')
-const resendLoading   = ref(false)
-const resendMsg       = ref(null)   // { type: 'ok'|'err', text: string }
 
-async function resendEmail() {
+const otpDigits    = ref(['', '', '', '', '', ''])
+const otpRefs      = ref([])
+const otpLoading   = ref(false)
+const otpError     = ref('')
+const resendLoading = ref(false)
+const resendMsg     = ref(null)
+
+const otpValue = computed(() => otpDigits.value.join(''))
+
+function onOtpInput(idx, e) {
+  const val = e.target.value.replace(/\D/g, '')
+  otpDigits.value[idx] = val.slice(-1)
+  if (val && idx < 5) nextTick(() => otpRefs.value[idx + 1]?.focus())
+}
+function onOtpKeydown(idx, e) {
+  if (e.key === 'Backspace' && !otpDigits.value[idx] && idx > 0) {
+    nextTick(() => otpRefs.value[idx - 1]?.focus())
+  }
+}
+function onOtpPaste(e) {
+  const text = (e.clipboardData || window.clipboardData).getData('text')
+  const digits = text.replace(/\D/g, '').slice(0, 6).split('')
+  digits.forEach((d, i) => { otpDigits.value[i] = d })
+  nextTick(() => otpRefs.value[Math.min(digits.length, 5)]?.focus())
+}
+function resetOtpBoxes() {
+  otpDigits.value = ['', '', '', '', '', '']
+  nextTick(() => otpRefs.value[0]?.focus())
+}
+
+async function verifyOTP() {
+  otpError.value   = ''
+  otpLoading.value = true
+  try {
+    const { data } = await authAPI.verifyEmailOTP({
+      email: registeredEmail.value,
+      otp:   otpValue.value,
+    })
+    auth.setAuth(data.token, data.user)
+    router.push(data.needs_profile_setup ? '/profile-setup' : '/dashboard')
+  } catch (err) {
+    otpError.value = err.response?.data?.error ?? 'Verification failed. Please try again.'
+    resetOtpBoxes()
+  } finally {
+    otpLoading.value = false
+  }
+}
+
+async function resendOTP() {
   resendLoading.value = true
   resendMsg.value     = null
   try {
     await authAPI.resendVerification({ email: registeredEmail.value })
-    resendMsg.value = { type: 'ok', text: 'A new link has been sent — check your inbox.' }
+    resendMsg.value = { type: 'ok', text: 'New code sent — check your inbox.' }
+    resetOtpBoxes()
   } catch {
     resendMsg.value = { type: 'err', text: 'Failed to send. Please try again.' }
   } finally {
     resendLoading.value = false
-    setTimeout(() => { resendMsg.value = null }, 8000)
+    setTimeout(() => { resendMsg.value = null }, 6000)
   }
 }
 
@@ -177,11 +246,11 @@ async function submit() {
   loading.value = true
   error.value   = ''
   try {
-    await authAPI.register({
-      email: form.value.email, password: form.value.password,
-    })
+    await authAPI.register({ email: form.value.email, password: form.value.password })
     registeredEmail.value = form.value.email
-    registered.value = true
+    otpDigits.value = ['', '', '', '', '', '']
+    step.value = 'otp'
+    nextTick(() => otpRefs.value[0]?.focus())
   } catch (err) {
     error.value = err.response?.data?.error ?? 'Registration failed. Please try again.'
   } finally {
@@ -191,29 +260,28 @@ async function submit() {
 </script>
 
 <style scoped>
-.inbox-icon {
+.otp-icon {
   width: 56px; height: 56px; border-radius: 50%;
   background: var(--blue-light, #e8f0fe); color: var(--blue, #1a73e8);
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px;
 }
-.btn-resend {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 34px; padding: 0 16px; border-radius: 8px;
-  font-size: 0.82rem; font-weight: 600; cursor: pointer;
-  border: 1.5px solid var(--blue, #1a73e8);
-  color: var(--blue, #1a73e8); background: var(--blue-light, #e8f0fe);
-  transition: background .15s;
+.otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 28px 0; }
+.otp-box {
+  width: 48px; height: 58px;
+  border: 2px solid var(--border, #dadce0); border-radius: 10px;
+  font-size: 24px; font-weight: 700; text-align: center;
+  outline: none; background: #fff; color: var(--text, #202124);
+  transition: border-color .15s, box-shadow .15s; caret-color: transparent;
 }
-.btn-resend:hover:not(:disabled) { background: #d2e3fc; }
-.btn-resend:disabled { opacity: 0.6; cursor: not-allowed; }
+.otp-box:focus { border-color: var(--blue, #1a73e8); box-shadow: 0 0 0 3px var(--blue-light, #e8f0fe); }
+.otp-box.filled { border-color: var(--blue, #1a73e8); background: var(--blue-light, #e8f0fe); }
 .alert {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-radius: 8px;
-  font-size: 0.84rem; font-weight: 500;
+  padding: 10px 14px; border-radius: 8px; font-size: 0.84rem; font-weight: 500;
 }
-.alert-success { background: #e6f4ea; color: #1e8e3e; }
 .alert-error   { background: #fce8e6; color: #c5221f; }
+.alert-success { background: #e6f4ea; color: #1e8e3e; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.spin { animation: spin .8s linear infinite; }
+.spin { animation: spin .8s linear infinite; flex-shrink: 0; }
 </style>

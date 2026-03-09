@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
 // On 401 — clear stored credentials and redirect to login
 // But skip redirect for auth endpoints themselves (login, register, forgot-password)
 // so that wrong-credential errors can be shown in the UI.
-const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/auth/resend-verification']
+const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/auth/resend-verification', '/auth/verify-email-otp', '/auth/verify-reset-otp']
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -33,12 +33,13 @@ api.interceptors.response.use(
 // ── Named endpoint helpers ──────────────────────────────────────────────────
 export const authAPI = {
   resendVerification: (data) => api.post('/auth/resend-verification', data),
-  register:       (data) => api.post('/auth/register',        data),
-  verifyEmail:    (token) => api.get('/auth/verify-email',    { params: { token } }),
-  login:          (data) => api.post('/auth/login',           data),
-  logout:         ()     => api.post('/auth/logout'),
-  forgotPassword: (data) => api.post('/auth/forgot-password', data),
-  resetPassword:  (data) => api.post('/auth/reset-password',  data),
+  register:           (data) => api.post('/auth/register',            data),
+  verifyEmailOTP:     (data) => api.post('/auth/verify-email-otp',    data),
+  login:              (data) => api.post('/auth/login',               data),
+  logout:             ()     => api.post('/auth/logout'),
+  forgotPassword:     (data) => api.post('/auth/forgot-password',     data),
+  verifyResetOTP:     (data) => api.post('/auth/verify-reset-otp',    data),
+  resetPassword:      (data) => api.post('/auth/reset-password',      data),
   getProfile:      ()     => api.get('/profile'),
   setupProfile:    (data) => api.post('/profile',               data),
   changePassword:  (data) => api.post('/auth/change-password', data),

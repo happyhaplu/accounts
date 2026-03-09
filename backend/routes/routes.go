@@ -35,14 +35,13 @@ func Setup(app *fiber.App) {
 	// ── Public auth routes ────────────────────────────────────────
 	auth := api.Group("/auth")
 	auth.Post("/register",              handlers.Register)
-	auth.Get("/verify-email",           handlers.VerifyEmail)
-	auth.Post("/resend-verification",   handlers.ResendVerification)
-	auth.Post("/login",                 handlers.Login)
-	auth.Post("/logout",                handlers.Logout)
-	auth.Post("/forgot-password",       handlers.ForgotPassword)
-	auth.Post("/reset-password",        handlers.ResetPassword)
-
-	// ── Stripe Webhook (public — Stripe signs the body, no JWT) ──
+        auth.Post("/verify-email-otp",      handlers.VerifyEmailOTP)
+        auth.Post("/resend-verification",   handlers.ResendVerification)
+        auth.Post("/login",                 handlers.Login)
+        auth.Post("/logout",                handlers.Logout)
+        auth.Post("/forgot-password",       handlers.ForgotPassword)
+        auth.Post("/verify-reset-otp",      handlers.VerifyResetOTP)
+        auth.Post("/reset-password",        handlers.ResetPassword)
 	// stripe listen --forward-to localhost:8080/api/v1/billing/webhook
 	api.Post("/billing/webhook", handlers.HandleStripeWebhook)
 

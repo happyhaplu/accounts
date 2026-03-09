@@ -67,9 +67,76 @@ func PasswordResetBody(link string) string {
 	)
 }
 
+// OTPBody returns the HTML for a 6-digit OTP email (email verify or password reset).
+func OTPBody(otp, purpose string) string {
+        heading, intro, note := "", "", ""
+        if purpose == "password_reset" {
+                heading = "Password reset code"
+                intro = "We received a request to reset the password for your Outcraftly account. Enter the code below in the app to continue."
+                note = "This code expires in <strong>10&nbsp;minutes</strong>. If you didn't request a password reset, you can safely ignore this email."
+        } else {
+                heading = "Verify your email"
+                intro = "Thanks for signing up! Enter the code below in the app to verify your email address and activate your account."
+                note = "This code expires in <strong>10&nbsp;minutes</strong>. If you didn't create an Outcraftly account, you can safely ignore this email."
+        }
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>` + heading + `</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f3f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f3f4;padding:48px 16px">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" border="0"
+           style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;
+                  overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,0.08)">
+      <!-- Header -->
+      <tr>
+        <td style="background:linear-gradient(135deg,#1565c0 0%,#0d47a1 100%);padding:28px 40px;text-align:center">
+          <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px">✦ Outcraftly</span>
+        </td>
+      </tr>
+      <!-- Body -->
+      <tr>
+        <td style="padding:40px 40px 28px">
+          <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;color:#202124;letter-spacing:-0.4px">` + heading + `</h1>
+          <p style="margin:0 0 32px;font-size:15px;color:#5f6368;line-height:1.65">` + intro + `</p>
+          <!-- OTP code block -->
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              <td align="center" style="padding:0 0 32px">
+                <div style="display:inline-block;background:#f0f4ff;border:2px solid #c7d9ff;
+                            border-radius:14px;padding:20px 36px;">
+                  <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1a73e8;
+                               font-family:'Helvetica Neue',Helvetica,Arial,monospace">` + otp + `</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:0;font-size:13px;color:#9aa0a6;text-align:center">
+            Do not share this code with anyone.
+          </p>
+        </td>
+      </tr>
+      <!-- Footer -->
+      <tr>
+        <td style="padding:20px 40px 28px;border-top:1px solid #f1f3f4">
+          <p style="margin:0;font-size:12px;color:#b0b4ba;line-height:1.6">
+            ` + note + `<br>
+            &copy; 2026 Outcraftly, Inc.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`
+}
+
 // WorkspaceInviteBody returns the HTML for a workspace invitation email.
-// wsName is the workspace name, inviterName/inviterEmail identify who sent it,
-// role is "member" or "owner", and link is the full accept URL.
 func WorkspaceInviteBody(wsName, inviterName, inviterEmail, role, link string) string {
 	by := inviterName
 	if by == "" {
