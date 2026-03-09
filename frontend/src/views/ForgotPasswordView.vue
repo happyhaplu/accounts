@@ -114,7 +114,8 @@
         {{ otpError }}
       </div>
 
-      <div class="otp-inputs">
+      <fieldset class="otp-inputs" style="border:none;padding:0;margin:0">
+        <legend class="sr-only">Reset code — enter one digit per box</legend>
         <input
           v-for="i in 6" :key="i"
           :ref="el => { otpRefs[i-1] = el }"
@@ -123,11 +124,12 @@
           class="otp-box"
           :class="{ filled: otpDigits[i-1] }"
           :value="otpDigits[i-1]"
+          :aria-label="`Digit ${i} of 6`"
           @input="onOtpInput(i-1, $event)"
           @keydown="onOtpKeydown(i-1, $event)"
           @paste.prevent="onOtpPaste($event)"
         />
-      </div>
+      </fieldset>
 
       <div class="form-actions" style="flex-direction:column; align-items:stretch; gap:12px">
         <button class="btn-primary" :disabled="otpValue.length < 6 || otpLoading" @click="verifyOTP">
@@ -319,6 +321,10 @@ async function submitReset() {
   background: var(--blue-light, #e8f0fe); color: var(--blue, #1a73e8);
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 .otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 28px 0; }
 .otp-box {
