@@ -45,8 +45,10 @@ services:
       STRIPE_SECRET_KEY:      ${STRIPE_SECRET_KEY}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       STRIPE_WEBHOOK_SECRET:  ${STRIPE_WEBHOOK_SECRET}
-    ports:
-      - "${PORT:-8080}:8080"
+    # No external port — backend is only reachable internally via Docker network.
+    # nginx (frontend) proxies /api/ → http://backend:8080 without exposing 8080.
+    expose:
+      - "8080"
 
   # ── Vue frontend (nginx) ─────────────────────────────────────────────────────
   frontend:
