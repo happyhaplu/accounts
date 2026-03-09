@@ -60,8 +60,10 @@ services:
       - backend
     environment:
       BACKEND_URL: http://backend:8080
-    ports:
-      - "80:80"
+    # No host port mapping — Coolify's Traefik reverse proxy routes external
+    # traffic to this container automatically based on the domain you set in Coolify.
+    expose:
+      - "80"
 
 volumes:
   postgres_data:
