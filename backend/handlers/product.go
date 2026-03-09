@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"os"
 	"strings"
+	"time"
 
 	"outcraftly/accounts/database"
 	"outcraftly/accounts/models"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -156,4 +159,141 @@ func DeactivateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found or already inactive"))
 	}
 	return c.JSON(fiber.Map{"message": "Product deactivated"})
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/products/:name/launch  (protected — authenticated user)
+// Checks the caller's active workspace subscription for the named product,
+// signs a 7-day JWT carrying { sub, email, workspace_id }, and redirects to
+// the appropriate product callback URL (https:// in prod, localhost in dev).
+// ─────────────────────────────────────────────────────────────────────────────
+
+func LaunchProduct(c *fiber.Ctx) error {
+	userID, _ := uuid.Parse(c.Locals("userID").(string))
+	email := c.Locals("email").(string)
+	name := strings.ToLower(c.Params("name"))
+
+	// Resolve product by name slug.
+	var product models.Product
+	if database.DB.Where("name = ? AND is_active = true", name).First(&product).Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
+	}
+	if len(product.RedirectURLs) == 0 {
+		return c.Status(fiber.StatusBadGateway).JSON(errJSON("Product has no redirect URLs configured"))
+	}
+
+	// Find the user's owner workspace (first one if multiple).
+	var member models.WorkspaceMember
+	if database.DB.Where("user_id = ? AND role = 'owner'", userID).
+		Order("joined_at ASC").First(&member).Error != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(errJSON("No workspace found for user"))
+	}
+	workspaceID := member.WorkspaceID
+
+	// Verify an active, non-expired subscription exists.
+	var sub models.Subscription
+	tx := database.DB.
+		Where("workspace_id = ? AND product_id = ? AND status = 'active'", workspaceID, product.ID).
+		First(&sub)
+	if tx.Error != nil || !sub.IsAccessible() {
+		return c.Status(fiber.StatusForbidden).JSON(errJSON("No active subscription for this product"))
+	}
+
+	// Sign a launch token valid for 7 days.
+	launchToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":          userID.String(),
+		"email":        email,
+		"workspace_id": workspaceID.String(),
+		"exp":          time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	signed, err := launchToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return serverError(c, "Failed to generate launch token")
+	}
+
+	// Pick the redirect URL: https:// for production, localhost for development.
+	appURL := os.Getenv("APP_URL")
+	isProd := strings.HasPrefix(appURL, "https://")
+	var redirectURL string
+	for _, u := range product.RedirectURLs {
+		if isProd && strings.HasPrefix(u, "https://") {
+			redirectURL = u
+			break
+		}
+		if !isProd && strings.Contains(u, "localhost") {
+			redirectURL = u
+			break
+		}
+	}
+	if redirectURL == "" {
+		redirectURL = product.RedirectURLs[0]
+	}
+
+	return c.Redirect(redirectURL+"?token="+signed, fiber.StatusFound)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/products/:name/check
+// Called by external Outcraftly apps (e.g. warmup.outcraftly.com) to verify
+// whether the bearer of a launch token has an active subscription.
+// Header: Authorization: Bearer <launch-token>
+//
+// 200 { "active": true,  "status": "active", "plan_name": "pro" }
+// 200 { "active": false }
+// 401 invalid / expired token
+// ─────────────────────────────────────────────────────────────────────────────
+
+func CheckProductSubscription(c *fiber.Ctx) error {
+	name := strings.ToLower(c.Params("name"))
+
+	// Extract and verify the Bearer token.
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Missing Authorization header"))
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
+		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Authorization header must be: Bearer <token>"))
+	}
+
+	token, err := jwt.Parse(parts[1], func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fiber.ErrUnauthorized
+		}
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Invalid or expired token"))
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Invalid token claims"))
+	}
+
+	workspaceIDStr, _ := claims["workspace_id"].(string)
+	workspaceID, err := uuid.Parse(workspaceIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Invalid workspace_id in token"))
+	}
+
+	// Lookup product.
+	var product models.Product
+	if database.DB.Where("name = ? AND is_active = true", name).First(&product).Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
+	}
+
+	// Lookup subscription.
+	var sub models.Subscription
+	if database.DB.
+		Where("workspace_id = ? AND product_id = ? AND status = 'active'", workspaceID, product.ID).
+		First(&sub).Error != nil {
+		return c.JSON(fiber.Map{"active": false})
+	}
+
+	return c.JSON(fiber.Map{
+		"active":    sub.IsAccessible(),
+		"status":    sub.Status,
+		"plan_name": sub.PlanName,
+	})
 }

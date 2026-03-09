@@ -14,9 +14,17 @@ import (
 
 // defaultProducts are seeded on every startup (idempotent — only inserted if missing).
 var defaultProducts = []models.Product{
-	{Name: "cold_email",  Description: "AI-powered cold email outreach and automation"},
-	{Name: "linkedin",    Description: "LinkedIn outreach and connection automation"},
-	{Name: "warmup",      Description: "Email inbox warm-up to improve deliverability"},
+	{Name: "cold_email",    Description: "AI-powered cold email outreach and automation"},
+	{Name: "linkedin",      Description: "LinkedIn outreach and connection automation"},
+	{Name: "warmup",        Description: "Email inbox warm-up to improve deliverability"},
+	{
+		Name:        "email-warmup",
+		Description: "Email inbox warm-up to improve deliverability and sender reputation",
+		RedirectURLs: []string{
+			"http://localhost:3000/callback",
+			"https://warmup.outcraftly.com/callback",
+		},
+	},
 }
 
 // DB is the shared GORM database instance.

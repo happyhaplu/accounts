@@ -64,7 +64,10 @@ export const authAPI = {
   cancelSubscription:  (wsId, subId)  => api.delete(`/workspaces/${wsId}/subscriptions/${subId}`),
 
   // Products
-  listProducts: () => api.get('/products'),
+  listProducts:  () => api.get('/products'),
+  // Launch a product — backend checks subscription then redirects with JWT token.
+  // Use window.location.href to follow the redirect (not axios, which won't redirect).
+  launchProduct: (name) => { window.location.href = `/api/v1/products/${name}/launch` },
 
   // Billing (Stripe)
   getBillingStatus:       (wsId)       => api.get(`/workspaces/${wsId}/billing`),

@@ -190,14 +190,41 @@
           </div>
           <h2>Products</h2>
         </div>
-        <p class="section-sub">Outcraftly products you have access to will appear here.</p>
-        <div class="products-grid">
-          <div v-for="p in products" :key="p.name" class="product-card">
-            <div class="product-icon-wrap">{{ p.icon }}</div>
-            <div class="product-name">{{ p.name }}</div>
-            <span class="product-badge">{{ p.status }}</span>
+        <p class="section-sub">Outcraftly products available to your workspace.</p>
+
+        <div v-if="productsLoading" class="products-loading">Loading products…</div>
+
+        <div v-else class="products-grid">
+          <div v-for="prod in enrichedProducts" :key="prod.id" class="product-card">
+            <div class="product-icon-wrap">{{ prod.icon }}</div>
+            <div class="product-name">{{ prod.displayName }}</div>
+
+            <!-- Active subscription → Launch button -->
+            <template v-if="prod.subscribed">
+              <span class="product-badge badge-active">Active</span>
+              <button
+                v-if="prod.redirect_urls && prod.redirect_urls.length"
+                class="launch-btn"
+                :disabled="launching === prod.name"
+                @click="launch(prod.name)"
+              >
+                {{ launching === prod.name ? 'Launching…' : 'Launch' }}
+              </button>
+            </template>
+
+            <!-- No subscription -->
+            <span v-else class="product-badge">No subscription</span>
+          </div>
+
+          <!-- Empty state -->
+          <div v-if="!enrichedProducts.length" class="product-card empty-card">
+            <div class="product-icon-wrap">📦</div>
+            <div class="product-name">No products yet</div>
+            <span class="product-badge">Coming soon</span>
           </div>
         </div>
+
+        <p v-if="launchError" class="launch-error">{{ launchError }}</p>
       </section>
 
     </div>
@@ -205,15 +232,82 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { authAPI } from '../services/api'
 
 const auth = useAuthStore()
 
-const products = [
-  { icon: '🚀', name: 'Product One',   status: 'Coming soon' },
-  { icon: '⚡', name: 'Product Two',   status: 'Coming soon' },
-  { icon: '🎯', name: 'Product Three', status: 'Coming soon' },
-]
+// ── Product display meta ──────────────────────────────────────────────────
+const PRODUCT_META = {
+  'email-warmup': { icon: '🔥', displayName: 'Email Warmup' },
+  'cold_email':   { icon: '📧', displayName: 'Cold Email' },
+  'linkedin':     { icon: '💼', displayName: 'LinkedIn Outreach' },
+  'warmup':       { icon: '🌡️', displayName: 'Inbox Warmup' },
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+const rawProducts      = ref([])
+const activeSubNames   = ref(new Set())
+const productsLoading  = ref(true)
+const launching        = ref(null)
+const launchError      = ref('')
+
+// ── Computed: merge product list with subscription info ───────────────────
+const enrichedProducts = computed(() =>
+  rawProducts.value.map(p => ({
+    ...p,
+    icon:        PRODUCT_META[p.name]?.icon        ?? '🚀',
+    displayName: PRODUCT_META[p.name]?.displayName ?? p.name,
+    subscribed:  activeSubNames.value.has(p.name),
+  }))
+)
+
+// ── Data loading ──────────────────────────────────────────────────────────
+onMounted(async () => {
+  try {
+    // Load all active products
+    const prodRes = await authAPI.listProducts()
+    rawProducts.value = prodRes.data.products ?? []
+
+    // Load subscriptions for the user's workspace
+    const wsRes = await authAPI.listWorkspaces()
+    const workspaces = wsRes.data.workspaces ?? []
+    if (workspaces.length) {
+      const wsId = workspaces[0].id
+      const subRes = await authAPI.listSubscriptions(wsId)
+      const subs = subRes.data.subscriptions ?? []
+      // Build a set of product names with active subscriptions
+      const productIds = new Set(subs.filter(s => s.status === 'active').map(s => s.product_id))
+      // Map product UUIDs → names
+      const nameSet = new Set(
+        rawProducts.value
+          .filter(p => productIds.has(p.id))
+          .map(p => p.name)
+      )
+      activeSubNames.value = nameSet
+    }
+  } catch (e) {
+    console.error('Failed to load products/subscriptions', e)
+  } finally {
+    productsLoading.value = false
+  }
+})
+
+// ── Actions ───────────────────────────────────────────────────────────────
+function launch(productName) {
+  if (launching.value) return
+  launchError.value = ''
+  launching.value = productName
+  // authAPI.launchProduct does window.location.href redirect
+  // Wrap in try/catch in case of any sync error
+  try {
+    authAPI.launchProduct(productName)
+  } catch {
+    launching.value = null
+    launchError.value = 'Could not launch product. Please try again.'
+  }
+}
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -301,9 +395,10 @@ function formatDate(iso) {
 .info-value.mono { font-family: 'Courier New', monospace; font-size: 0.75rem; font-weight: 400; }
 
 /* Products grid */
+.products-loading { color: var(--text-muted, #5f6368); font-size: 0.875rem; padding: 1rem 0; }
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1rem;
 }
 .product-card {
@@ -313,19 +408,45 @@ function formatDate(iso) {
   padding: 1.75rem 1rem;
   text-align: center;
   transition: border-color 0.18s, box-shadow 0.18s;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
 }
 .product-card:hover {
   border-color: var(--blue, #1a73e8);
   box-shadow: 0 2px 10px rgba(26,115,232,0.08);
 }
-.product-icon-wrap { font-size: 2rem; margin-bottom: 0.6rem; }
-.product-name  { font-weight: 600; font-size: 0.9rem; color: var(--text, #202124); margin-bottom: 0.5rem; }
+.empty-card { opacity: 0.5; }
+.product-icon-wrap { font-size: 2rem; margin-bottom: 0.25rem; }
+.product-name  { font-weight: 600; font-size: 0.9rem; color: var(--text, #202124); }
 .product-badge {
   display: inline-block;
   background: var(--blue-light, #e8f0fe);
   color: var(--blue, #1a73e8);
   font-size: 11px; font-weight: 600;
   padding: 3px 10px; border-radius: 20px;
+}
+.badge-active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.launch-btn {
+  margin-top: 0.25rem;
+  background: var(--blue, #1a73e8);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, opacity 0.18s;
+  width: 100%;
+}
+.launch-btn:hover:not(:disabled) { background: var(--blue-darker, #0d47a1); }
+.launch-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.launch-error {
+  margin-top: 0.75rem;
+  color: #c62828;
+  font-size: 0.85rem;
 }
 
 @media (max-width: 600px) {
