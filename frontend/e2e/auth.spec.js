@@ -93,13 +93,19 @@ test.describe('Forgot password page', () => {
     await expect(page.locator('button[type="submit"]')).toBeVisible()
   })
 
-  test('shows success message for any email (anti-enumeration)', async ({ page }) => {
+  test('shows OTP step for any email (anti-enumeration)', async ({ page }) => {
+    // Mock the forgot-password endpoint so the test is backend-independent.
+    // The backend always returns 200 regardless of whether the email exists
+    // (anti-enumeration); here we verify the UI transitions to the OTP step
+    // on any successful response.
+    await page.route('**/api/v1/auth/forgot-password', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'ok' }) })
+    )
     await page.goto('/forgot-password')
     await page.fill('input[type="email"]', 'nobody@example.com')
     await page.click('button[type="submit"]')
-    // Success state renders .check-icon + "Check your inbox" heading (no success/alert class)
-    await expect(page.locator('.check-icon')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('h1')).toHaveText('Check your inbox')
+    await expect(page.locator('.otp-icon')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('h1')).toHaveText('Enter reset code')
   })
 })
 
