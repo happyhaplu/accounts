@@ -99,5 +99,27 @@ test-frontend-coverage: ## Run Vitest with coverage report
 test-e2e: ## Run Playwright E2E tests (requires dev server)
 	cd frontend && npm run test:e2e
 
+.PHONY: test-regression
+test-regression: ## Run backend regression tests only
+	cd backend && $(GO) test ./integration_test/... -run Regression -v -count=1 -timeout=120s
+
+.PHONY: test-otp
+test-otp: ## Run backend OTP integration tests only
+	cd backend && $(GO) test ./integration_test/... -run "(OTP|Verify|Resend|Reset)" -v -count=1 -timeout=120s
+
+.PHONY: test-a11y
+test-a11y: ## Run Playwright accessibility tests (requires dev server)
+	cd frontend && npx playwright test e2e/accessibility.spec.js
+
+.PHONY: test-load
+test-load: ## Run k6 load test (requires k6 installed: https://k6.io)
+	@which k6 > /dev/null 2>&1 || (echo "k6 not installed. See https://k6.io/docs/get-started/installation/" && exit 1)
+	k6 run scripts/load_test.js
+
+.PHONY: test-load-smoke
+test-load-smoke: ## Run a single-VU smoke test with k6
+	@which k6 > /dev/null 2>&1 || (echo "k6 not installed. See https://k6.io/docs/get-started/installation/" && exit 1)
+	k6 run --vus 1 --iterations 1 scripts/load_test.js
+
 .PHONY: test-all
-test-all: test test-e2e ## Run every test suite including E2E
+test-all: test test-e2e test-a11y ## Run every test suite including E2E and accessibility

@@ -42,7 +42,7 @@ assert.Equal(t, 201, resp.StatusCode)
 
 var body map[string]interface{}
 json.NewDecoder(resp.Body).Decode(&body)
-assert.Contains(t, body["message"], "check your email")
+assert.Contains(t, body["message"], "6-digit code")
 }
 
 func TestRegister_DuplicateEmail(t *testing.T) {

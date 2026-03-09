@@ -16,6 +16,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // ── Request bodies ────────────────────────────────────────────────────────────
@@ -389,12 +390,13 @@ func ResetPassword(c *fiber.Ctx) error {
 		return serverError(c, "Failed to hash password")
 	}
 
+	// Use gorm.Expr("NULL") to force zero-value writes on all drivers (SQLite, Postgres).
 	database.DB.Model(&user).Updates(map[string]interface{}{
 		"password_hash":         string(hash),
-		"reset_token":           nil,
-		"reset_token_expires":   nil,
+		"reset_token":           gorm.Expr("NULL"),
+		"reset_token_expires":   gorm.Expr("NULL"),
 		"failed_login_attempts": 0,
-		"locked_until":          nil,
+		"locked_until":          gorm.Expr("NULL"),
 	})
 
 	return c.JSON(fiber.Map{"message": "Password reset successfully. You can now sign in."})
