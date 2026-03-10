@@ -66,25 +66,36 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { authAPI } from '../services/api'
 import AuthLayout from '../layouts/AuthLayout.vue'
 
 const router = useRouter()
+const route  = useRoute()
 const auth   = useAuthStore()
 const form   = ref({ email: '', password: '' })
-const showPw = ref(false)
+const showPw  = ref(false)
 const loading = ref(false)
 const error   = ref('')
+
+// Preserve redirect_uri from URL query (e.g. /login?redirect_uri=https://warmup.outcraftly.com/callback)
+const redirectUri = route.query.redirect_uri ?? ''
 
 async function submit() {
   loading.value = true
   error.value   = ''
   try {
-    const { data } = await authAPI.login(form.value)
+    const { data } = await authAPI.login({ ...form.value, redirect_uri: redirectUri })
     auth.setAuth(data.token, data.user)
-    router.push('/dashboard')
+    if (data.redirect_url) {
+      // Backend signed a launch JWT and built the full callback URL for us.
+      window.location.href = data.redirect_url
+    } else if (data.needs_profile_setup) {
+      router.push('/profile-setup')
+    } else {
+      router.push('/dashboard')
+    }
   } catch (err) {
     error.value = err.response?.data?.error ?? 'Login failed. Please try again.'
   } finally {

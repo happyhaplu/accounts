@@ -27,8 +27,9 @@ type registerRequest struct {
 }
 
 type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	RedirectURI string `json:"redirect_uri"`
 }
 
 type otpRequest struct {
@@ -280,6 +281,31 @@ func Login(c *fiber.Ctx) error {
 	jwtToken, err := generateJWT(user.ID.String(), user.Email)
 	if err != nil {
 		return serverError(c, "Failed to issue token")
+	}
+
+	// If a redirect_uri was supplied, sign a 7-day launch token and return the
+	// full redirect URL so the frontend can navigate directly to the target app.
+	if req.RedirectURI != "" {
+		var member models.WorkspaceMember
+		if database.DB.Where("user_id = ? AND role = 'owner'", user.ID).
+			Order("joined_at ASC").First(&member).Error == nil {
+
+			launchToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+				"sub":          user.ID.String(),
+				"email":        user.Email,
+				"workspace_id": member.WorkspaceID.String(),
+				"exp":          time.Now().Add(7 * 24 * time.Hour).Unix(),
+			})
+			if signed, err := launchToken.SignedString([]byte(os.Getenv("JWT_SECRET"))); err == nil {
+				return c.JSON(fiber.Map{
+					"message":      "Login successful",
+					"token":        jwtToken,
+					"user":         publicUser(user),
+					"redirect_url": req.RedirectURI + "?token=" + signed,
+				})
+			}
+		}
+		// Workspace not found or token sign failed — fall through to normal response.
 	}
 
 	return c.JSON(fiber.Map{
