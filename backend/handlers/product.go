@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -163,9 +164,18 @@ func DeactivateProduct(c *fiber.Ctx) error {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/products/:name/launch  (protected — authenticated user)
-// Checks the caller's active workspace subscription for the named product,
-// signs a 7-day JWT carrying { sub, email, workspace_id }, and redirects to
-// the appropriate product callback URL (https:// in prod, localhost in dev).
+//
+// Checks the caller's active subscription, signs a 7-day launch token, and
+// returns the full callback URL for the frontend to navigate to.
+//
+// Flow A — dashboard launch (no redirect_uri):
+//   → picks the best URL from product.redirect_urls (https in prod / localhost in dev)
+//
+// Flow B — external product redirect (Google-style):
+//   GET /api/v1/products/email-warmup/launch?redirect_uri=https://warmup.outcraftly.com/callback
+//   → validates redirect_uri against product's allowed origins, then uses it
+//
+// Response: 200 { "redirect_url": "https://...?token=<jwt>", "token": "<jwt>" }
 // ─────────────────────────────────────────────────────────────────────────────
 
 func LaunchProduct(c *fiber.Ctx) error {
@@ -178,11 +188,8 @@ func LaunchProduct(c *fiber.Ctx) error {
 	if database.DB.Where("name = ? AND is_active = true", name).First(&product).Error != nil {
 		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
 	}
-	if len(product.RedirectURLs) == 0 {
-		return c.Status(fiber.StatusBadGateway).JSON(errJSON("Product has no redirect URLs configured"))
-	}
 
-	// Find the user's owner workspace (first one if multiple).
+	// Find the user's owner workspace (oldest first if multiple).
 	var member models.WorkspaceMember
 	if database.DB.Where("user_id = ? AND role = 'owner'", userID).
 		Order("joined_at ASC").First(&member).Error != nil {
@@ -199,7 +206,7 @@ func LaunchProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(errJSON("No active subscription for this product"))
 	}
 
-	// Sign a launch token valid for 7 days.
+	// Sign a 7-day launch token containing identity + workspace.
 	launchToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":          userID.String(),
 		"email":        email,
@@ -211,25 +218,78 @@ func LaunchProduct(c *fiber.Ctx) error {
 		return serverError(c, "Failed to generate launch token")
 	}
 
-	// Pick the redirect URL: https:// for production, localhost for development.
-	appURL := os.Getenv("APP_URL")
-	isProd := strings.HasPrefix(appURL, "https://")
+	// ── Determine the redirect URL ──────────────────────────────────────────
+	//
+	// Priority:
+	//   1. redirect_uri query param  — caller-supplied, validated against allowed origins
+	//   2. DB redirect_urls          — pick prod/dev URL based on APP_URL prefix
+	//   3. Fallback                  — send the user to the accounts dashboard
+	//
 	var redirectURL string
-	for _, u := range product.RedirectURLs {
-		if isProd && strings.HasPrefix(u, "https://") {
-			redirectURL = u
-			break
+
+	if ru := strings.TrimSpace(c.Query("redirect_uri")); ru != "" {
+		// Security: only accept redirect_uri values whose scheme+host matches one
+		// of the product's configured redirect URLs. Prevents open-redirect attacks.
+		if !isAllowedRedirectURI(ru, product.RedirectURLs) {
+			return c.Status(fiber.StatusBadRequest).JSON(errJSON(
+				"redirect_uri is not in the list of allowed URLs for this product",
+			))
 		}
-		if !isProd && strings.Contains(u, "localhost") {
-			redirectURL = u
-			break
+		redirectURL = ru
+	} else if len(product.RedirectURLs) > 0 {
+		appURL := os.Getenv("APP_URL")
+		isProd := strings.HasPrefix(appURL, "https://")
+		for _, u := range product.RedirectURLs {
+			if isProd && strings.HasPrefix(u, "https://") {
+				redirectURL = u
+				break
+			}
+			if !isProd && strings.Contains(u, "localhost") {
+				redirectURL = u
+				break
+			}
 		}
-	}
-	if redirectURL == "" {
-		redirectURL = product.RedirectURLs[0]
+		if redirectURL == "" {
+			redirectURL = product.RedirectURLs[0]
+		}
+	} else {
+		// No redirect URLs configured anywhere — send back to dashboard.
+		redirectURL = os.Getenv("APP_URL") + "/dashboard"
 	}
 
-	return c.Redirect(redirectURL+"?token="+signed, fiber.StatusFound)
+	return c.JSON(fiber.Map{
+		"redirect_url": redirectURL + "?token=" + signed,
+		"token":        signed,
+	})
+}
+
+// isAllowedRedirectURI returns true when redirectURI's scheme+host matches at
+// least one of the product's configured redirect URL origins. This prevents an
+// attacker from supplying an arbitrary redirect_uri and using Outcraftly as an
+// open redirect.
+func isAllowedRedirectURI(redirectURI string, allowedURLs []string) bool {
+	if len(allowedURLs) == 0 {
+		return false
+	}
+	target := uriOrigin(redirectURI)
+	if target == "" {
+		return false
+	}
+	for _, allowed := range allowedURLs {
+		if uriOrigin(allowed) == target {
+			return true
+		}
+	}
+	return false
+}
+
+// uriOrigin returns "scheme://host" (e.g. "https://warmup.outcraftly.com").
+func uriOrigin(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -65,9 +65,14 @@ export const authAPI = {
 
   // Products
   listProducts:  () => api.get('/products'),
-  // Launch a product — backend checks subscription then redirects with JWT token.
-  // Use window.location.href to follow the redirect (not axios, which won't redirect).
-  launchProduct: (name) => { window.location.href = `/api/v1/products/${name}/launch` },
+  // Launch a product — backend validates subscription and returns the callback URL.
+  // Call launchProduct(name) from the dashboard (uses DB-configured URL).
+  // Call launchProduct(name, 'https://warmup.outcraftly.com/callback') when
+  // the product app redirected the user here with a specific redirect_uri.
+  launchProduct: (name, redirectUri) =>
+    api.get(`/products/${name}/launch`, {
+      params: redirectUri ? { redirect_uri: redirectUri } : {},
+    }),
 
   // Billing (Stripe)
   getBillingStatus:       (wsId)       => api.get(`/workspaces/${wsId}/billing`),

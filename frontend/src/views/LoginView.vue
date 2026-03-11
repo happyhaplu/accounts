@@ -2,7 +2,7 @@
   <AuthLayout>
     <div class="form-header">
       <h1>Sign in</h1>
-      <p>to continue to Outcraftly Accounts</p>
+      <p>to continue to <strong>{{ redirectHost || 'Outcraftly Accounts' }}</strong></p>
     </div>
 
     <div v-if="error" class="alert alert-error">
@@ -81,6 +81,12 @@ const error   = ref('')
 
 // Preserve redirect_uri from URL query (e.g. /login?redirect_uri=https://warmup.outcraftly.com/callback)
 const redirectUri = route.query.redirect_uri ?? ''
+
+// Extract a human-readable hostname for the "Sign in to continue to X" subtitle.
+// e.g. "https://warmup.outcraftly.com/callback" → "warmup.outcraftly.com"
+const redirectHost = redirectUri
+  ? (() => { try { return new URL(redirectUri).hostname } catch { return '' } })()
+  : ''
 
 async function submit() {
   loading.value = true

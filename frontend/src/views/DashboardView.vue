@@ -295,17 +295,21 @@ onMounted(async () => {
 })
 
 // ── Actions ───────────────────────────────────────────────────────────────
-function launch(productName) {
+async function launch(productName) {
   if (launching.value) return
   launchError.value = ''
   launching.value = productName
-  // authAPI.launchProduct does window.location.href redirect
-  // Wrap in try/catch in case of any sync error
   try {
-    authAPI.launchProduct(productName)
-  } catch {
+    const { data } = await authAPI.launchProduct(productName)
+    if (data.redirect_url) {
+      window.location.href = data.redirect_url
+    } else {
+      launching.value = null
+      launchError.value = 'No redirect URL returned. Please try again.'
+    }
+  } catch (err) {
     launching.value = null
-    launchError.value = 'Could not launch product. Please try again.'
+    launchError.value = err.response?.data?.error ?? 'Could not launch product. Please try again.'
   }
 }
 
