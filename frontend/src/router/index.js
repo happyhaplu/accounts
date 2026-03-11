@@ -64,6 +64,14 @@ const routes = [
     component: () => import('../views/BillingView.vue'),
     meta: { auth: true },
   },
+  // Product launch bridge — orchestrates auth check → API call → redirect to
+  // the product app.  Handles auth internally (no meta.auth) so it can redirect
+  // to /login?redirect_uri=… and preserve the callback URL.
+  {
+    path: '/products/:slug/launch',
+    name: 'ProductLaunch',
+    component: () => import('../views/ProductLaunchView.vue'),
+  },
   // Public — handles workspace invite accept link from email
   {
     path: '/invite',

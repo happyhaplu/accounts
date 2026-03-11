@@ -24,7 +24,13 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('oc_token')
       localStorage.removeItem('oc_user')
-      window.location.href = '/login'
+      // Preserve redirect_uri for product-launch flows so the user is sent
+      // back to the product app after re-authenticating.
+      const params = new URLSearchParams(window.location.search)
+      const redirectUri = params.get('redirect_uri')
+      window.location.href = redirectUri
+        ? '/login?redirect_uri=' + encodeURIComponent(redirectUri)
+        : '/login'
     }
     return Promise.reject(err)
   },
