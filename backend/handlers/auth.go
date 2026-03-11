@@ -283,9 +283,10 @@ func Login(c *fiber.Ctx) error {
 		return serverError(c, "Failed to issue token")
 	}
 
-	// If a redirect_uri was supplied, sign a 7-day launch token and return the
-	// full redirect URL so the frontend can navigate directly to the target app.
-	if req.RedirectURI != "" {
+	// If a redirect_uri was supplied AND it passes the global allowlist check,
+	// sign a 7-day launch token and return the full callback URL so the frontend
+	// can navigate directly to the target product app.
+	if req.RedirectURI != "" && isGloballyAllowedOrigin(req.RedirectURI) {
 		var member models.WorkspaceMember
 		if database.DB.Where("user_id = ? AND role = 'owner'", user.ID).
 			Order("joined_at ASC").First(&member).Error == nil {

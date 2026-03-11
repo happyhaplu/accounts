@@ -263,20 +263,47 @@ func LaunchProduct(c *fiber.Ctx) error {
 	})
 }
 
-// isAllowedRedirectURI returns true when redirectURI's scheme+host matches at
-// least one of the product's configured redirect URL origins. This prevents an
-// attacker from supplying an arbitrary redirect_uri and using Outcraftly as an
-// open redirect.
-func isAllowedRedirectURI(redirectURI string, allowedURLs []string) bool {
-	if len(allowedURLs) == 0 {
-		return false
-	}
+// isAllowedRedirectURI returns true when redirectURI's scheme+host is permitted.
+//
+// It checks two sources (union):
+//   1. The product's DB-configured redirect_urls  (per-product whitelist)
+//   2. The ALLOWED_REDIRECT_ORIGINS env var       (global whitelist, comma-separated)
+//
+// This means localhost:3000 works in dev without needing to be in the DB, and
+// production URLs work without re-seeding on every deploy.
+func isAllowedRedirectURI(redirectURI string, productURLs []string) bool {
 	target := uriOrigin(redirectURI)
 	if target == "" {
 		return false
 	}
-	for _, allowed := range allowedURLs {
-		if uriOrigin(allowed) == target {
+	// Check product-level DB URLs.
+	for _, u := range productURLs {
+		if uriOrigin(u) == target {
+			return true
+		}
+	}
+	// Check global env-var allowlist.
+	return isGloballyAllowedOrigin(redirectURI)
+}
+
+// isGloballyAllowedOrigin checks redirectURI's origin against the
+// ALLOWED_REDIRECT_ORIGINS environment variable (comma-separated scheme+host
+// values, e.g. "http://localhost:3000,https://warmup.outcraftly.com").
+// Used by both the Login handler and LaunchProduct.
+func isGloballyAllowedOrigin(redirectURI string) bool {
+	target := uriOrigin(redirectURI)
+	if target == "" {
+		return false
+	}
+	raw := os.Getenv("ALLOWED_REDIRECT_ORIGINS")
+	if raw == "" {
+		return false
+	}
+	for _, entry := range strings.Split(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		// Entry may be a full URL (e.g. http://localhost:3000/callback) or just
+		// an origin (http://localhost:3000) — normalise to origin before comparing.
+		if uriOrigin(entry) == target || strings.TrimRight(entry, "/") == target {
 			return true
 		}
 	}
