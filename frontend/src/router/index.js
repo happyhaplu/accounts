@@ -72,6 +72,13 @@ const routes = [
     name: 'ProductLaunch',
     component: () => import('../views/ProductLaunchView.vue'),
   },
+  // Logout — clears auth state and optionally redirects back to a product.
+  // Used by external products: /logout?redirect_uri=https://warmup.outcraftly.com
+  {
+    path: '/logout',
+    name: 'Logout',
+    component: () => import('../views/LogoutView.vue'),
+  },
   // Public — handles workspace invite accept link from email
   {
     path: '/invite',
