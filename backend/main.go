@@ -30,10 +30,15 @@ AppName: "Outcraftly Accounts API v1.0",
 
 // Global middleware
 app.Use(logger.New())
+
+// CORS — origins are resolved dynamically from the product registry in the
+// database (each product's redirect_urls). Static origins (the Accounts
+// frontend, dev localhost) come from the ALLOW_ORIGINS env var.
+database.SetStaticOrigins(cfg.AllowOrigins)
 app.Use(cors.New(cors.Config{
-AllowOrigins: cfg.AllowOrigins,
-AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
+AllowOriginsFunc: database.IsAllowedOrigin,
+AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 }))
 
 // Register all routes

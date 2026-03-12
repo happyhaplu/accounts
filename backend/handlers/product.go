@@ -286,23 +286,31 @@ func isAllowedRedirectURI(redirectURI string, productURLs []string) bool {
 	return isGloballyAllowedOrigin(redirectURI)
 }
 
-// isGloballyAllowedOrigin checks redirectURI's origin against the
-// ALLOWED_REDIRECT_ORIGINS environment variable (comma-separated scheme+host
-// values, e.g. "http://localhost:3000,https://warmup.outcraftly.com").
-// Used by both the Login handler and LaunchProduct.
+// isGloballyAllowedOrigin checks redirectURI's origin against:
+//   1. All product redirect_urls in the database (via the CORS cache)
+//   2. The ALLOWED_REDIRECT_ORIGINS env var (legacy fallback / dev overrides)
+//   3. The ALLOW_ORIGINS env var (static origins like the accounts frontend)
+//
+// This means adding a new product with its redirect_urls in the admin API
+// automatically allows redirects to that origin — zero env changes.
 func isGloballyAllowedOrigin(redirectURI string) bool {
 	target := uriOrigin(redirectURI)
 	if target == "" {
 		return false
 	}
+
+	// Check the dynamic product-origin cache + static origins.
+	if database.IsAllowedOrigin(target) {
+		return true
+	}
+
+	// Legacy fallback: ALLOWED_REDIRECT_ORIGINS env var.
 	raw := os.Getenv("ALLOWED_REDIRECT_ORIGINS")
 	if raw == "" {
 		return false
 	}
 	for _, entry := range strings.Split(raw, ",") {
 		entry = strings.TrimSpace(entry)
-		// Entry may be a full URL (e.g. http://localhost:3000/callback) or just
-		// an origin (http://localhost:3000) — normalise to origin before comparing.
 		if uriOrigin(entry) == target || strings.TrimRight(entry, "/") == target {
 			return true
 		}
