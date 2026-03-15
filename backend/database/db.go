@@ -23,6 +23,12 @@ func defaultProducts() []models.Product {
 		emailWarmupPriceID = &v
 	}
 
+	// Read optional Stripe price ID for reach.
+	var reachPriceID *string
+	if v := os.Getenv("STRIPE_REACH_PRICE_ID"); v != "" {
+		reachPriceID = &v
+	}
+
 	return []models.Product{
 		{Name: "cold_email", Description: "AI-powered cold email outreach and automation"},
 		{Name: "linkedin", Description: "LinkedIn outreach and connection automation"},
@@ -33,6 +39,15 @@ func defaultProducts() []models.Product {
 			RedirectURLs: []string{
 				"http://localhost:3000/callback",
 				"https://warmup.outcraftly.com/callback",
+			},
+		},
+		{
+			Name:          "reach",
+			Description:   "Multi-channel outreach automation — email, LinkedIn, and more",
+			StripePriceID: reachPriceID,
+			RedirectURLs: []string{
+				"http://localhost:3001/callback",
+				"https://reach.outcraftly.com/callback",
 			},
 		},
 	}

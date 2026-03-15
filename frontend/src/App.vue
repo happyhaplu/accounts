@@ -161,9 +161,10 @@ const menuOpen    = ref(false)
 const appsOpen    = ref(false)
 
 const apps = [
-  { name: 'Product One',   short: 'P1', gradient: 'linear-gradient(135deg,#4285f4,#1a73e8)', shadow: 'rgba(66,133,244,0.35)', url: '#', status: 'Coming soon' },
-  { name: 'Product Two',   short: 'P2', gradient: 'linear-gradient(135deg,#34a853,#137333)', shadow: 'rgba(52,168,83,0.35)',  url: '#', status: 'Coming soon' },
-  { name: 'Product Three', short: 'P3', gradient: 'linear-gradient(135deg,#ea4335,#c5221f)', shadow: 'rgba(234,67,53,0.35)',  url: '#', status: 'Coming soon' },
+  { name: 'Email Warmup', short: 'EW', gradient: 'linear-gradient(135deg,#ea4335,#fb8c00)', shadow: 'rgba(234,67,53,0.35)', url: '/products/email-warmup/launch', status: 'Active' },
+  { name: 'Reach',        short: 'RE', gradient: 'linear-gradient(135deg,#4285f4,#1a73e8)', shadow: 'rgba(66,133,244,0.35)', url: '/products/reach/launch',        status: 'Active' },
+  { name: 'Cold Email',   short: 'CE', gradient: 'linear-gradient(135deg,#34a853,#137333)', shadow: 'rgba(52,168,83,0.35)',  url: '/products/cold_email/launch',   status: 'Coming soon' },
+  { name: 'LinkedIn',     short: 'LI', gradient: 'linear-gradient(135deg,#0077b5,#005582)', shadow: 'rgba(0,119,181,0.35)',  url: '/products/linkedin/launch',     status: 'Coming soon' },
 ]
 
 const userInitial = computed(() => {

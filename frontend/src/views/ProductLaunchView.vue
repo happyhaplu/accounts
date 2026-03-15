@@ -75,6 +75,7 @@ const PRODUCT_META = {
   'email-warmup': 'Email Warmup',
   'cold_email':   'Cold Email',
   'linkedin':     'LinkedIn Outreach',
+  'reach':        'Reach',
   'warmup':       'Inbox Warmup',
 }
 const displayName = PRODUCT_META[slug] ?? slug
