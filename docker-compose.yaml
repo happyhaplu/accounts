@@ -68,11 +68,11 @@ services:
       STRIPE_EMAIL_WARMUP_PRICE_ID: ${STRIPE_EMAIL_WARMUP_PRICE_ID:-}
       STRIPE_REACH_PRICE_ID:  ${STRIPE_REACH_PRICE_ID:-}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/v1/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 15s
+      retries: 10
+      start_period: 30s
     # No external port — backend is only reachable internally via Docker network.
     # nginx (frontend) proxies /api/ → http://backend:8080 without exposing 8080.
     expose:

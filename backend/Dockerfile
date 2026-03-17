@@ -20,7 +20,8 @@ FROM alpine:3.19
 
 # ca-certificates  → HTTPS outbound (SMTP relay, Stripe API)
 # tzdata           → correct timestamps in logs
-RUN apk --no-cache add ca-certificates tzdata
+# curl             → Docker health check
+RUN apk --no-cache add ca-certificates tzdata curl
 
 WORKDIR /app
 
