@@ -5,6 +5,7 @@ import (
 "os"
 "time"
 
+"outcraftly/accounts/config"
 "outcraftly/accounts/database"
 "outcraftly/accounts/middleware"
 "outcraftly/accounts/models"
@@ -49,6 +50,10 @@ panic("testhelpers: AutoMigrate failed: " + err.Error())
 }
 
 database.DB = db
+
+// Populate config.Cfg so handlers/middleware can reference it.
+config.Load()
+
 return db
 }
 
@@ -64,6 +69,9 @@ func MakeJWT(userID, email string) string {
 claims := jwt.MapClaims{
 "sub":   userID,
 "email": email,
+"role":  "user",
+"iss":   "accounts.outcraftly.com",
+"aud":   "reach",
 "exp":   time.Now().Add(24 * time.Hour).Unix(),
 "iat":   time.Now().Unix(),
 }

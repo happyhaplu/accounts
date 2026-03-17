@@ -32,6 +32,7 @@ type User struct {
 	ProfileComplete  bool   `gorm:"default:false" json:"profile_complete"`
 
 	// Security
+	Role                string     `gorm:"default:'user'" json:"role"` // "user" | "admin"
 	LastLoginAt         *time.Time `json:"last_login_at,omitempty"`
 	FailedLoginAttempts int        `gorm:"default:0" json:"-"`
 	LockedUntil         *time.Time `json:"-"`

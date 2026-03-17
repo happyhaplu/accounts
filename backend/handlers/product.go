@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"outcraftly/accounts/config"
 	"outcraftly/accounts/database"
 	"outcraftly/accounts/models"
 
@@ -211,9 +212,13 @@ func LaunchProduct(c *fiber.Ctx) error {
 		"sub":          userID.String(),
 		"email":        email,
 		"workspace_id": workspaceID.String(),
+		"role":         c.Locals("role"),
+		"iss":          config.Cfg.JWTIssuer,
+		"aud":          config.Cfg.JWTAudience,
 		"exp":          time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"iat":          time.Now().Unix(),
 	})
-	signed, err := launchToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	signed, err := launchToken.SignedString([]byte(config.Cfg.JWTSecret))
 	if err != nil {
 		return serverError(c, "Failed to generate launch token")
 	}
@@ -237,8 +242,7 @@ func LaunchProduct(c *fiber.Ctx) error {
 		}
 		redirectURL = ru
 	} else if len(product.RedirectURLs) > 0 {
-		appURL := os.Getenv("APP_URL")
-		isProd := strings.HasPrefix(appURL, "https://")
+		isProd := strings.HasPrefix(config.Cfg.AccountsBaseURL, "https://")
 		for _, u := range product.RedirectURLs {
 			if isProd && strings.HasPrefix(u, "https://") {
 				redirectURL = u
@@ -254,7 +258,7 @@ func LaunchProduct(c *fiber.Ctx) error {
 		}
 	} else {
 		// No redirect URLs configured anywhere — send back to dashboard.
-		redirectURL = os.Getenv("APP_URL") + "/dashboard"
+		redirectURL = config.Cfg.AccountsBaseURL + "/dashboard"
 	}
 
 	return c.JSON(fiber.Map{
@@ -278,6 +282,12 @@ func isAllowedRedirectURI(redirectURI string, productURLs []string) bool {
 	}
 	// Check product-level DB URLs.
 	for _, u := range productURLs {
+		if uriOrigin(u) == target {
+			return true
+		}
+	}
+	// Check AUTH_REDIRECT_URIS env allowlist.
+	for _, u := range config.Cfg.AuthRedirectURIs {
 		if uriOrigin(u) == target {
 			return true
 		}
@@ -355,8 +365,11 @@ func CheckProductSubscription(c *fiber.Ctx) error {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fiber.ErrUnauthorized
 		}
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
+		return []byte(config.Cfg.JWTSecret), nil
+	},
+		jwt.WithIssuer(config.Cfg.JWTIssuer),
+		jwt.WithAudience(config.Cfg.JWTAudience),
+	)
 	if err != nil || !token.Valid {
 		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Invalid or expired token"))
 	}

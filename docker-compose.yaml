@@ -32,19 +32,41 @@ services:
       DB_USER:                ${DB_USER:-outcraftly}
       DB_PASSWORD:            ${DB_PASSWORD:-outcraftly}
       DB_NAME:                ${DB_NAME:-accounts}
+
+      # ── Auth & JWT ────────────────────────────────────────────────
+      APP_ENV:                ${APP_ENV:-development}
       JWT_SECRET:             ${JWT_SECRET}
-      ALLOW_ORIGINS:          ${ALLOW_ORIGINS}
+      JWT_ISSUER:             ${JWT_ISSUER:-accounts.outcraftly.com}
+      JWT_AUDIENCE:           ${JWT_AUDIENCE:-reach}
+      JWT_PRIVATE_KEY:        ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY:         ${JWT_PUBLIC_KEY:-}
+      JWKS_URL:               ${JWKS_URL:-}
+      ACCOUNTS_BASE_URL:      ${ACCOUNTS_BASE_URL:-https://accounts.outcraftly.com}
+      APP_URL:                ${APP_URL:-https://accounts.outcraftly.com}
+
+      # ── CORS & Redirect allowlists ────────────────────────────────
+      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-}
+      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000}
+      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-http://localhost:4000/auth/callback,http://localhost:3000/callback}
+      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-}
+
+      # ── Admin ─────────────────────────────────────────────────────
       ADMIN_SECRET:           ${ADMIN_SECRET}
+
+      # ── Email (SMTP) ─────────────────────────────────────────────
       SMTP_HOST:              ${SMTP_HOST}
       SMTP_PORT:              ${SMTP_PORT:-587}
       SMTP_USER:              ${SMTP_USER}
       SMTP_PASS:              ${SMTP_PASS}
       SMTP_FROM:              ${SMTP_FROM}
       SMTP_REPLY_TO:          ${SMTP_REPLY_TO}
-      APP_URL:                ${APP_URL}
+
+      # ── Stripe (billing) ─────────────────────────────────────────
       STRIPE_SECRET_KEY:      ${STRIPE_SECRET_KEY}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       STRIPE_WEBHOOK_SECRET:  ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_EMAIL_WARMUP_PRICE_ID: ${STRIPE_EMAIL_WARMUP_PRICE_ID:-}
+      STRIPE_REACH_PRICE_ID:  ${STRIPE_REACH_PRICE_ID:-}
     # No external port — backend is only reachable internally via Docker network.
     # nginx (frontend) proxies /api/ → http://backend:8080 without exposing 8080.
     expose:

@@ -3,10 +3,10 @@ package middleware_test
 import (
 	"fmt"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
+	"outcraftly/accounts/config"
 	"outcraftly/accounts/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,6 +21,9 @@ func makeToken(t *testing.T, sub, email string, exp time.Time) string {
 	claims := jwt.MapClaims{
 		"sub":   sub,
 		"email": email,
+		"role":  "user",
+		"iss":   "test-issuer",
+		"aud":   "test-aud",
 		"exp":   exp.Unix(),
 		"iat":   time.Now().Unix(),
 	}
@@ -33,7 +36,11 @@ func makeToken(t *testing.T, sub, email string, exp time.Time) string {
 }
 
 func setupApp() *fiber.App {
-	os.Setenv("JWT_SECRET", testSecret)
+	config.Cfg = &config.Config{
+		JWTSecret:   testSecret,
+		JWTIssuer:   "test-issuer",
+		JWTAudience: "test-aud",
+	}
 	app := fiber.New(fiber.Config{DisableStartupMessage: true})
 	app.Use(middleware.Protected())
 	app.Get("/ping", func(c *fiber.Ctx) error {

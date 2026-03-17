@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"outcraftly/accounts/config"
 	"outcraftly/accounts/database"
 	"outcraftly/accounts/mailer"
 	"outcraftly/accounts/models"
@@ -155,10 +156,11 @@ func VerifyEmailOTP(c *fiber.Ctx) error {
 
 	// Already verified — issue token directly (idempotent).
 	if user.EmailVerified {
-		jwtToken, err := generateJWT(user.ID.String(), user.Email)
+		jwtToken, err := generateJWT(user.ID.String(), user.Email, user.Role)
 		if err != nil {
 			return serverError(c, "Failed to issue token")
 		}
+		setAuthCookie(c, jwtToken)
 		return c.JSON(fiber.Map{
 			"message":             "Email already verified",
 			"token":               jwtToken,
@@ -185,11 +187,12 @@ func VerifyEmailOTP(c *fiber.Ctx) error {
 	})
 	user.EmailVerified = true
 
-	jwtToken, err := generateJWT(user.ID.String(), user.Email)
+	jwtToken, err := generateJWT(user.ID.String(), user.Email, user.Role)
 	if err != nil {
 		return serverError(c, "Failed to issue token")
 	}
 
+	setAuthCookie(c, jwtToken)
 	return c.JSON(fiber.Map{
 		"message":             "Email verified successfully!",
 		"token":               jwtToken,
@@ -278,10 +281,12 @@ func Login(c *fiber.Ctx) error {
 	})
 	user.LastLoginAt = &now
 
-	jwtToken, err := generateJWT(user.ID.String(), user.Email)
+	jwtToken, err := generateJWT(user.ID.String(), user.Email, user.Role)
 	if err != nil {
 		return serverError(c, "Failed to issue token")
 	}
+
+	setAuthCookie(c, jwtToken)
 
 	// If a redirect_uri was supplied AND it passes the global allowlist check,
 	// sign a 7-day launch token and return the full callback URL so the frontend
@@ -295,9 +300,13 @@ func Login(c *fiber.Ctx) error {
 				"sub":          user.ID.String(),
 				"email":        user.Email,
 				"workspace_id": member.WorkspaceID.String(),
+				"role":         user.Role,
+				"iss":          config.Cfg.JWTIssuer,
+				"aud":          config.Cfg.JWTAudience,
 				"exp":          time.Now().Add(7 * 24 * time.Hour).Unix(),
+				"iat":          time.Now().Unix(),
 			})
-			if signed, err := launchToken.SignedString([]byte(os.Getenv("JWT_SECRET"))); err == nil {
+			if signed, err := launchToken.SignedString([]byte(config.Cfg.JWTSecret)); err == nil {
 				return c.JSON(fiber.Map{
 					"message":      "Login successful",
 					"token":        jwtToken,
@@ -319,6 +328,15 @@ func Login(c *fiber.Ctx) error {
 
 // Logout is stateless (client discards JWT).
 func Logout(c *fiber.Ctx) error {
+	c.Cookie(&fiber.Cookie{
+		Name:     "accounts_token",
+		Value:    "",
+		Path:     "/",
+		HTTPOnly: true,
+		SameSite: "None",
+		Secure:   strings.EqualFold(config.Cfg.Environment, "production"),
+		MaxAge:   -1,
+	})
 	return c.JSON(fiber.Map{"message": "Logged out successfully"})
 }
 
@@ -477,15 +495,37 @@ func GetProfile(c *fiber.Ctx) error {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-func generateJWT(userID, email string) (string, error) {
+func generateJWT(userID, email, role string) (string, error) {
+	if role == "" {
+		role = "user"
+	}
 	claims := jwt.MapClaims{
 		"sub":   userID,
 		"email": email,
+		"role":  role,
+		"iss":   config.Cfg.JWTIssuer,
+		"aud":   config.Cfg.JWTAudience,
 		"exp":   time.Now().Add(24 * time.Hour).Unix(),
 		"iat":   time.Now().Unix(),
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return t.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	return t.SignedString([]byte(config.Cfg.JWTSecret))
+}
+
+// setAuthCookie writes the JWT as an HttpOnly cookie.
+// Local (HTTP):  SameSite=None, Secure=false
+// Production:    SameSite=None, Secure=true
+func setAuthCookie(c *fiber.Ctx, token string) {
+	secure := strings.EqualFold(config.Cfg.Environment, "production")
+	c.Cookie(&fiber.Cookie{
+		Name:     "accounts_token",
+		Value:    token,
+		Path:     "/",
+		HTTPOnly: true,
+		SameSite: "None",
+		Secure:   secure,
+		MaxAge:   86400, // 24 hours
+	})
 }
 
 func publicUser(u models.User) fiber.Map {
@@ -493,6 +533,7 @@ func publicUser(u models.User) fiber.Map {
 		"id":                  u.ID,
 		"email":               u.Email,
 		"email_verified":      u.EmailVerified,
+		"role":                u.Role,
 		"name":                u.Name,
 		"company_name":        u.CompanyName,
 		"job_title":           u.JobTitle,

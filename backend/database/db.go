@@ -46,8 +46,8 @@ func defaultProducts() []models.Product {
 			Description:   "Multi-channel outreach automation — email, LinkedIn, and more",
 			StripePriceID: reachPriceID,
 			RedirectURLs: []string{
-				"http://localhost:3001/callback",
-				"https://reach.outcraftly.com/callback",
+				"http://localhost:4000/auth/callback",
+				"https://reach.outcraftly.com/auth/callback",
 			},
 		},
 	}
