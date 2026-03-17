@@ -307,11 +307,16 @@ func Login(c *fiber.Ctx) error {
 				"iat":          time.Now().Unix(),
 			})
 			if signed, err := launchToken.SignedString([]byte(config.Cfg.JWTSecret)); err == nil {
+				// Use & if the redirect URI already contains query params.
+				sep := "?"
+				if strings.Contains(req.RedirectURI, "?") {
+					sep = "&"
+				}
 				return c.JSON(fiber.Map{
 					"message":      "Login successful",
 					"token":        jwtToken,
 					"user":         publicUser(user),
-					"redirect_url": req.RedirectURI + "?token=" + signed,
+					"redirect_url": req.RedirectURI + sep + "token=" + signed,
 				})
 			}
 		}

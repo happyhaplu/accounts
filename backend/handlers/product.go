@@ -261,8 +261,14 @@ func LaunchProduct(c *fiber.Ctx) error {
 		redirectURL = config.Cfg.AccountsBaseURL + "/dashboard"
 	}
 
+	// Use & if the redirect URL already contains query params.
+	sep := "?"
+	if strings.Contains(redirectURL, "?") {
+		sep = "&"
+	}
+
 	return c.JSON(fiber.Map{
-		"redirect_url": redirectURL + "?token=" + signed,
+		"redirect_url": redirectURL + sep + "token=" + signed,
 		"token":        signed,
 	})
 }
