@@ -242,8 +242,7 @@ const auth = useAuthStore()
 const PRODUCT_META = {
   'email-warmup': { icon: '🔥', displayName: 'Email Warmup' },
   'cold_email':   { icon: '📧', displayName: 'Cold Email' },
-  'linkedin':     { icon: '💼', displayName: 'LinkedIn Outreach' },
-  'reach':        { icon: '📡', displayName: 'Reach' },
+  'reach':        { icon: '🔗', displayName: 'Reach — LinkedIn Automation' },
   'warmup':       { icon: '🌡️', displayName: 'Inbox Warmup' },
 }
 

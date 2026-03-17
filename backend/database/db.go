@@ -31,7 +31,6 @@ func defaultProducts() []models.Product {
 
 	return []models.Product{
 		{Name: "cold_email", Description: "AI-powered cold email outreach and automation"},
-		{Name: "linkedin", Description: "LinkedIn outreach and connection automation"},
 		{
 			Name:          "email-warmup",
 			Description:   "Email inbox warm-up to improve deliverability and sender reputation",
@@ -43,7 +42,7 @@ func defaultProducts() []models.Product {
 		},
 		{
 			Name:          "reach",
-			Description:   "Multi-channel outreach automation — email, LinkedIn, and more",
+			Description:   "LinkedIn automation and outreach — find leads, send connection requests, and manage campaigns at scale",
 			StripePriceID: reachPriceID,
 			RedirectURLs: []string{
 				"http://localhost:4000/auth/callback",
@@ -128,5 +127,11 @@ func seedProducts() {
 	if res := DB.Model(&models.Product{}).Where("name = ? AND is_active = true", "warmup").
 		Update("is_active", false); res.RowsAffected > 0 {
 		log.Println("[seed] deactivated legacy product: warmup (replaced by email-warmup)")
+	}
+
+	// Deactivate the standalone "linkedin" product — LinkedIn features are now part of Reach.
+	if res := DB.Model(&models.Product{}).Where("name = ? AND is_active = true", "linkedin").
+		Update("is_active", false); res.RowsAffected > 0 {
+		log.Println("[seed] deactivated legacy product: linkedin (merged into reach)")
 	}
 }

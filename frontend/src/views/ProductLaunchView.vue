@@ -74,8 +74,7 @@ const redirectUri = route.query.redirect_uri ?? ''
 const PRODUCT_META = {
   'email-warmup': 'Email Warmup',
   'cold_email':   'Cold Email',
-  'linkedin':     'LinkedIn Outreach',
-  'reach':        'Reach',
+  'reach':        'Reach — LinkedIn Automation',
   'warmup':       'Inbox Warmup',
 }
 const displayName = PRODUCT_META[slug] ?? slug
