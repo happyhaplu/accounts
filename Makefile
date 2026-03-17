@@ -76,7 +76,8 @@ clean: ## Remove build artefacts
 test: test-backend test-frontend ## Run all tests (backend + frontend unit)
 
 .PHONY: test-backend
-test-backend: ## Run all Go tests (unit + integration)
+test-backend: ## Run all Go tests (unit + integration, with race detector if available)
+	cd backend && $(GO) vet ./...
 	cd backend && $(GO) test ./... -count=1 -timeout=120s
 
 .PHONY: test-backend-unit
@@ -123,3 +124,16 @@ test-load-smoke: ## Run a single-VU smoke test with k6
 
 .PHONY: test-all
 test-all: test test-e2e test-a11y ## Run every test suite including E2E and accessibility
+
+# ── Git hooks ─────────────────────────────────────────────────
+.PHONY: hooks
+hooks: ## Install git pre-push hook (runs full test suite before push)
+	@mkdir -p .git/hooks
+	@cp .githooks/pre-push .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "✔ Pre-push hook installed — all tests will run before every git push"
+
+.PHONY: hooks-remove
+hooks-remove: ## Remove the pre-push hook
+	@rm -f .git/hooks/pre-push
+	@echo "✔ Pre-push hook removed"

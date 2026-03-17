@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# ── Git pre-push hook ─────────────────────────────────────────────────────────
+# Runs the FULL test suite before allowing a push to GitHub.
+# If any step fails, the push is blocked.
+#
+# Install: make hooks   (or manually: cp .githooks/pre-push .git/hooks/pre-push)
+# ──────────────────────────────────────────────────────────────────────────────
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+step() { echo -e "\n${CYAN}${BOLD}▸ $1${RESET}"; }
+pass() { echo -e "${GREEN}✔ $1${RESET}"; }
+fail() { echo -e "${RED}✖ $1${RESET}"; echo -e "${RED}Push aborted.${RESET}"; exit 1; }
+
+GO="${GO:-go}"
+ROOT="$(git rev-parse --show-toplevel)"
+
+# ── 1. Backend: build ────────────────────────────────────────────────────────
+step "Backend — build"
+(cd "$ROOT/backend" && $GO build ./...) && pass "Build OK" || fail "Backend build failed"
+
+# ── 2. Backend: vet ──────────────────────────────────────────────────────────
+step "Backend — go vet"
+(cd "$ROOT/backend" && $GO vet ./...) && pass "Vet OK" || fail "go vet found issues"
+
+# ── 3. Backend: unit + integration tests ─────────────────────────────────────
+step "Backend — tests (unit + integration)"
+RACE_FLAG=""
+if command -v gcc >/dev/null 2>&1; then
+    RACE_FLAG="-race"
+    echo "  (race detector enabled — gcc found)"
+else
+    echo "  (race detector skipped — no gcc; CI will run -race)"
+fi
+(cd "$ROOT/backend" && $GO test ./... -count=1 $RACE_FLAG -timeout 120s) && pass "All Go tests passed" || fail "Go tests failed"
+
+# ── 4. Frontend: install deps (if needed) ───────────────────────────────────
+step "Frontend — checking dependencies"
+if [ ! -d "$ROOT/frontend/node_modules" ]; then
+    echo "  node_modules missing — running npm ci..."
+    (cd "$ROOT/frontend" && npm ci --silent)
+fi
+pass "Dependencies OK"
+
+# ── 5. Frontend: build ──────────────────────────────────────────────────────
+step "Frontend — build"
+(cd "$ROOT/frontend" && npm run build --silent) && pass "Build OK" || fail "Frontend build failed"
+
+# ── 6. Frontend: unit tests ─────────────────────────────────────────────────
+step "Frontend — Vitest unit tests"
+(cd "$ROOT/frontend" && npm run test --silent) && pass "All Vue tests passed" || fail "Vue tests failed"
+
+# ── Done ─────────────────────────────────────────────────────────────────────
+echo ""
+echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${GREEN}${BOLD}  ✔ All checks passed — pushing to GitHub${RESET}"
+echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
