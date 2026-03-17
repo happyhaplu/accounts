@@ -34,8 +34,8 @@ services:
       DB_NAME:                ${DB_NAME:-accounts}
 
       # ── Auth & JWT ────────────────────────────────────────────────
-      APP_ENV:                ${APP_ENV:-development}
-      JWT_SECRET:             ${JWT_SECRET}
+      APP_ENV:                ${APP_ENV:-production}
+      JWT_SECRET:             ${JWT_SECRET:-outcraftly-jwt-production-secret-change-me}
       JWT_ISSUER:             ${JWT_ISSUER:-accounts.outcraftly.com}
       JWT_AUDIENCE:           ${JWT_AUDIENCE:-reach}
       JWT_PRIVATE_KEY:        ${JWT_PRIVATE_KEY:-}
@@ -45,28 +45,28 @@ services:
       APP_URL:                ${APP_URL:-https://accounts.outcraftly.com}
 
       # ── CORS & Redirect allowlists ────────────────────────────────
-      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-}
-      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000}
-      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-http://localhost:4000/auth/callback,http://localhost:3000/callback}
-      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-}
+      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.outcraftly.com,https://warmup.outcraftly.com,https://reach.outcraftly.com}
+      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.outcraftly.com,https://warmup.outcraftly.com,https://reach.outcraftly.com}
+      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-http://localhost:4000/auth/callback,http://localhost:3000/callback,https://reach.outcraftly.com/auth/callback,https://warmup.outcraftly.com/callback}
+      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-http://localhost:3000,http://localhost:4000,https://warmup.outcraftly.com,https://reach.outcraftly.com}
 
       # ── Admin ─────────────────────────────────────────────────────
-      ADMIN_SECRET:           ${ADMIN_SECRET}
+      ADMIN_SECRET:           ${ADMIN_SECRET:-outcraftly-admin-secret-change-me}
 
-      # ── Email (SMTP) ─────────────────────────────────────────────
-      SMTP_HOST:              ${SMTP_HOST}
+      # ── Email (SMTP — ZeptoMail) ─────────────────────────────────
+      SMTP_HOST:              ${SMTP_HOST:-smtp.zeptomail.in}
       SMTP_PORT:              ${SMTP_PORT:-587}
-      SMTP_USER:              ${SMTP_USER}
-      SMTP_PASS:              ${SMTP_PASS}
-      SMTP_FROM:              ${SMTP_FROM}
-      SMTP_REPLY_TO:          ${SMTP_REPLY_TO}
+      SMTP_USER:              ${SMTP_USER:-emailapikey}
+      SMTP_PASS:              ${SMTP_PASS:-}
+      SMTP_FROM:              ${SMTP_FROM:-info@gridworkit.online}
+      SMTP_REPLY_TO:          ${SMTP_REPLY_TO:-happy.haplu@gmail.com}
 
       # ── Stripe (billing) ─────────────────────────────────────────
-      STRIPE_SECRET_KEY:      ${STRIPE_SECRET_KEY}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
-      STRIPE_WEBHOOK_SECRET:  ${STRIPE_WEBHOOK_SECRET}
-      STRIPE_EMAIL_WARMUP_PRICE_ID: ${STRIPE_EMAIL_WARMUP_PRICE_ID:-}
-      STRIPE_REACH_PRICE_ID:  ${STRIPE_REACH_PRICE_ID:-}
+      STRIPE_SECRET_KEY:      ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET:  ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_EMAIL_WARMUP_PRICE_ID: ${STRIPE_EMAIL_WARMUP_PRICE_ID:-price_1T9zUvHKFrC8ZGXqp8kExIBa}
+      STRIPE_REACH_PRICE_ID:  ${STRIPE_REACH_PRICE_ID:-price_1TBJyxHKFrC8ZGXq2S97y4RI}
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/health"]
       interval: 10s
