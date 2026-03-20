@@ -4,7 +4,7 @@
 
       <!-- Logo / brand -->
       <div class="invite-brand">
-        <img src="/icon.svg" alt="Gour" width="28" height="28" />
+        <img src="/icon.svg" alt="Gour" class="invite-brand-icon" />
         <span>Outcraftly</span>
       </div>
 
@@ -188,6 +188,10 @@ function handleLogout() {
   display: flex; align-items: center; justify-content: center; gap: 10px;
   margin-bottom: 32px;
   font-size: 18px; font-weight: 700; color: var(--text, #202124);
+}
+.invite-brand-icon {
+  width: 28px; height: 28px;
+  object-fit: cover; border-radius: 6px;
 }
 
 /* ── States ─────────────────────────────────────────────── */

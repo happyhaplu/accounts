@@ -2,7 +2,7 @@
   <div class="logout-page">
     <div class="logout-card">
       <div class="logout-icon">
-        <img src="/icon.svg" alt="Gour" width="48" height="48" />
+        <img src="/icon.svg" alt="Gour" class="logout-logo" />
       </div>
       <h2>Signing you out…</h2>
       <p class="logout-sub">You have been signed out of your Outcraftly account.</p>
@@ -57,6 +57,11 @@ onMounted(() => {
 }
 .logout-icon {
   margin-bottom: 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.logout-logo {
+  width: 48px; height: 48px;
+  object-fit: cover; border-radius: 10px;
 }
 .logout-card h2 {
   font-size: 1.25rem;

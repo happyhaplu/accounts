@@ -3,7 +3,8 @@
     <div class="launch-card">
       <!-- Logo -->
       <div class="launch-logo">
-        <img src="/logo.svg" alt="Gour" class="launch-logo-img" />
+        <img src="/icon.svg" alt="Gour" class="launch-logo-img" />
+        <span>Outcraftly</span>
       </div>
 
       <!-- Loading state -->
@@ -165,8 +166,15 @@ onMounted(async () => {
   margin-bottom: 2rem;
 }
 .launch-logo-img {
-  height: 32px;
-  width: auto;
+  width: 32px; height: 32px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.launch-logo span {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a73e8;
+  letter-spacing: -0.3px;
 }
 
 /* Spinner */

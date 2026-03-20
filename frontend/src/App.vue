@@ -4,7 +4,7 @@
     <nav v-if="auth.isAuthenticated" class="top-nav">
       <div class="nav-left">
         <div class="nav-logo-mark">
-          <img src="/icon.svg" alt="Gour" width="24" height="24" />
+          <img src="/icon.svg" alt="Gour" class="nav-logo-img" />
         </div>
         <span class="nav-brand">Outcraftly</span>
         <span class="nav-section">Accounts</span>
@@ -33,7 +33,7 @@
               <!-- Panel header -->
               <div class="apps-panel-header">
                 <div class="apps-panel-brand">
-                  <img src="/icon.svg" alt="Gour" width="20" height="20" />
+                  <img src="/icon.svg" alt="Gour" class="apps-brand-icon" />
                   <span>Outcraftly</span>
                 </div>
                 <span class="apps-panel-label">All products</span>
@@ -216,7 +216,11 @@ button { font-family: inherit; }
 .nav-logo-mark {
   width: 30px; height: 30px;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  filter: drop-shadow(0 1px 3px rgba(26,115,232,0.25));
+  overflow: hidden; border-radius: 6px;
+}
+.nav-logo-img {
+  width: 30px; height: 30px;
+  object-fit: cover;
 }
 .nav-brand  { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
 .nav-section {
@@ -316,6 +320,10 @@ button { font-family: inherit; }
   display: flex; align-items: center; gap: 8px;
   font-size: 14px; font-weight: 700; color: var(--text);
   letter-spacing: -0.2px;
+}
+.apps-brand-icon {
+  width: 22px; height: 22px;
+  object-fit: cover; border-radius: 4px;
 }
 .apps-panel-label {
   font-size: 11px; font-weight: 600;
