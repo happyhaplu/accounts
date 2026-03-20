@@ -3,8 +3,7 @@
     <!-- Top navbar — only for authenticated pages -->
     <nav v-if="auth.isAuthenticated" class="top-nav">
       <div class="nav-left">
-        <img src="/icon.svg" alt="Gour" class="nav-logo-img" />
-        <span class="nav-brand">Outcraftly</span>
+        <img src="/logo.svg" alt="Gour" class="nav-logo-img" />
         <span class="nav-section">Accounts</span>
       </div>
 
@@ -12,7 +11,7 @@
 
         <!-- ── Waffle / App launcher ── -->
         <div class="waffle-wrap" v-click-outside="closeApps">
-          <button class="waffle-btn" @click="appsOpen = !appsOpen" :class="{ active: appsOpen }" title="Outcraftly apps">
+          <button class="waffle-btn" @click="appsOpen = !appsOpen" :class="{ active: appsOpen }" title="Gour apps">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="5"  cy="5"  r="1.8"/>
               <circle cx="12" cy="5"  r="1.8"/>
@@ -31,8 +30,7 @@
               <!-- Panel header -->
               <div class="apps-panel-header">
                 <div class="apps-panel-brand">
-                  <img src="/icon.svg" alt="Gour" class="apps-brand-icon" />
-                  <span>Outcraftly</span>
+                  <img src="/logo.svg" alt="Gour" class="apps-brand-icon" />
                 </div>
                 <span class="apps-panel-label">All products</span>
               </div>
@@ -212,10 +210,9 @@ button { font-family: inherit; }
 }
 .nav-left { display: flex; align-items: center; gap: 10px; }
 .nav-logo-img {
-  height: 26px;
+  height: 22px;
   width: auto;
 }
-.nav-brand  { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
 .nav-section {
   font-size: 13px; color: var(--text-muted);
   padding-left: 8px; border-left: 1.5px solid var(--border); margin-left: 2px;

@@ -4,8 +4,7 @@
 
       <!-- Logo / brand -->
       <div class="invite-brand">
-        <img src="/icon.svg" alt="Gour" class="invite-brand-icon" />
-        <span>Outcraftly</span>
+        <img src="/logo.svg" alt="Gour" class="invite-brand-icon" />
       </div>
 
       <!-- Loading state -->

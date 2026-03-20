@@ -65,7 +65,7 @@
     <template v-else>
       <div class="form-header">
         <h1>Create your account</h1>
-        <p>Start with Outcraftly — it's free</p>
+        <p>Start with Gour — it's free</p>
       </div>
 
       <div v-if="error" class="alert alert-error">

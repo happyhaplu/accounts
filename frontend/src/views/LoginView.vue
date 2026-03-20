@@ -2,7 +2,7 @@
   <AuthLayout>
     <div class="form-header">
       <h1>Sign in</h1>
-      <p>to continue to <strong>{{ redirectHost || 'Outcraftly Accounts' }}</strong></p>
+      <p>to continue to <strong>{{ redirectHost || 'Gour Accounts' }}</strong></p>
     </div>
 
     <div v-if="error" class="alert alert-error">

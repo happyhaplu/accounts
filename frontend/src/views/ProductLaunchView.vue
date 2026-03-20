@@ -3,8 +3,7 @@
     <div class="launch-card">
       <!-- Logo -->
       <div class="launch-logo">
-        <img src="/icon.svg" alt="Gour" class="launch-logo-img" />
-        <span>Outcraftly</span>
+        <img src="/logo.svg" alt="Gour" class="launch-logo-img" />
       </div>
 
       <!-- Loading state -->

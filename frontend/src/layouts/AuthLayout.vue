@@ -9,7 +9,7 @@
 
         <div class="panel-body">
           <h2>One account.<br />Everything<br />connected.</h2>
-          <p>Access all Outcraftly products and services with a single, secure sign-in.</p>
+          <p>Access all Gour products and services with a single, secure sign-in.</p>
 
           <ul class="feature-list">
             <li v-for="f in features" :key="f">
@@ -24,7 +24,7 @@
           </ul>
         </div>
 
-        <div class="panel-footer">© 2026 Outcraftly, Inc.</div>
+        <div class="panel-footer">© 2026 Gour, Inc.</div>
       </div>
     </aside>
 

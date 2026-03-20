@@ -5,7 +5,7 @@
         <img src="/icon.svg" alt="Gour" class="logout-logo" />
       </div>
       <h2>Signing you out…</h2>
-      <p class="logout-sub">You have been signed out of your Outcraftly account.</p>
+      <p class="logout-sub">You have been signed out of your Gour account.</p>
     </div>
   </div>
 </template>

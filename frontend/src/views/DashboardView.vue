@@ -190,7 +190,7 @@
           </div>
           <h2>Products</h2>
         </div>
-        <p class="section-sub">Outcraftly products available to your workspace.</p>
+        <p class="section-sub">Gour products available to your workspace.</p>
 
         <div v-if="productsLoading" class="products-loading">Loading products…</div>
 
