@@ -4,17 +4,7 @@
     <nav v-if="auth.isAuthenticated" class="top-nav">
       <div class="nav-left">
         <div class="nav-logo-mark">
-          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
-            <defs>
-              <linearGradient id="planeGradNav" x1="4" y1="38" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#1d4ed8"/>
-                <stop offset="100%" stop-color="#4f8ef7"/>
-              </linearGradient>
-            </defs>
-            <path d="M4 36 L44 6 L32 44 L22 28 Z" fill="url(#planeGradNav)"/>
-            <path d="M22 28 L32 44 L26 30 Z" fill="#1535a8"/>
-            <path d="M22 28 L4 36 L44 6 Z" fill="rgba(255,255,255,0.18)"/>
-          </svg>
+          <img src="/icon.svg" alt="Gour" width="24" height="24" />
         </div>
         <span class="nav-brand">Outcraftly</span>
         <span class="nav-section">Accounts</span>
@@ -43,17 +33,7 @@
               <!-- Panel header -->
               <div class="apps-panel-header">
                 <div class="apps-panel-brand">
-                  <svg viewBox="0 0 48 48" fill="none" width="18" height="18">
-                    <defs>
-                      <linearGradient id="appsLauncherGrad" x1="4" y1="38" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#1d4ed8"/>
-                        <stop offset="100%" stop-color="#4f8ef7"/>
-                      </linearGradient>
-                    </defs>
-                    <path d="M4 36 L44 6 L32 44 L22 28 Z" fill="url(#appsLauncherGrad)"/>
-                    <path d="M22 28 L32 44 L26 30 Z" fill="#1535a8"/>
-                    <path d="M22 28 L4 36 L44 6 Z" fill="rgba(255,255,255,0.18)"/>
-                  </svg>
+                  <img src="/icon.svg" alt="Gour" width="20" height="20" />
                   <span>Outcraftly</span>
                 </div>
                 <span class="apps-panel-label">All products</span>

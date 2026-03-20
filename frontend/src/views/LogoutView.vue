@@ -2,17 +2,7 @@
   <div class="logout-page">
     <div class="logout-card">
       <div class="logout-icon">
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="48" height="48">
-          <defs>
-            <linearGradient id="planeGrad" x1="4" y1="38" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#1d4ed8"/>
-              <stop offset="100%" stop-color="#4f8ef7"/>
-            </linearGradient>
-          </defs>
-          <path d="M4 36 L44 6 L32 44 L22 28 Z" fill="url(#planeGrad)"/>
-          <path d="M22 28 L32 44 L26 30 Z" fill="#1535a8"/>
-          <path d="M22 28 L4 36 L44 6 Z" fill="rgba(255,255,255,0.18)"/>
-        </svg>
+        <img src="/icon.svg" alt="Gour" width="48" height="48" />
       </div>
       <h2>Signing you out…</h2>
       <p class="logout-sub">You have been signed out of your Outcraftly account.</p>

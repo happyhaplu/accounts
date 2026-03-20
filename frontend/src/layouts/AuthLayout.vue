@@ -4,21 +4,7 @@
     <aside class="auth-panel">
       <div class="panel-inner">
         <div class="panel-logo">
-          <svg class="logo-plane" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="planeGradPanel" x1="4" y1="38" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="rgba(255,255,255,0.7)"/>
-                <stop offset="100%" stop-color="rgba(255,255,255,1)"/>
-              </linearGradient>
-            </defs>
-            <!-- Main body -->
-            <path d="M4 36 L44 6 L32 44 L22 28 Z" fill="url(#planeGradPanel)"/>
-            <!-- Fold shadow -->
-            <path d="M22 28 L32 44 L26 30 Z" fill="rgba(255,255,255,0.35)"/>
-            <!-- Inner highlight -->
-            <path d="M22 28 L4 36 L44 6 Z" fill="rgba(255,255,255,0.15)"/>
-          </svg>
-          <span>Outcraftly</span>
+          <img class="logo-img" src="/logo.svg" alt="Gour" />
         </div>
 
         <div class="panel-body">
@@ -111,16 +97,11 @@ const features = [
   gap: 11px;
   margin-bottom: 80px;
 }
-.logo-plane {
-  width: 36px; height: 36px;
+.logo-img {
+  height: 38px;
+  width: auto;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.18));
-}
-.panel-logo span {
-  font-size: 17px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.3px;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.18)) brightness(0) invert(1);
 }
 
 /* Body */

@@ -4,11 +4,7 @@
 
       <!-- Logo / brand -->
       <div class="invite-brand">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-          <rect width="32" height="32" rx="8" fill="#1a73e8"/>
-          <path d="M8 16h5l3-8 4 16 3-8h5" stroke="#fff" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <img src="/icon.svg" alt="Gour" width="28" height="28" />
         <span>Outcraftly</span>
       </div>
 

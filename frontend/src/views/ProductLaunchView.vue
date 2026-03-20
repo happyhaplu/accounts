@@ -3,18 +3,7 @@
     <div class="launch-card">
       <!-- Logo -->
       <div class="launch-logo">
-        <svg class="logo-plane" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="planeGradLaunch" x1="4" y1="38" x2="44" y2="4" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#1565c0"/>
-              <stop offset="100%" stop-color="#1a73e8"/>
-            </linearGradient>
-          </defs>
-          <path d="M4 36 L44 6 L32 44 L22 28 Z" fill="url(#planeGradLaunch)"/>
-          <path d="M22 28 L32 44 L26 30 Z" fill="rgba(26,115,232,0.35)"/>
-          <path d="M22 28 L4 36 L44 6 Z" fill="rgba(26,115,232,0.15)"/>
-        </svg>
-        <span>Outcraftly</span>
+        <img src="/logo.svg" alt="Gour" class="launch-logo-img" />
       </div>
 
       <!-- Loading state -->
@@ -175,12 +164,9 @@ onMounted(async () => {
   gap: 10px;
   margin-bottom: 2rem;
 }
-.launch-logo .logo-plane { width: 32px; height: 32px; }
-.launch-logo span {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #1a73e8;
-  letter-spacing: -0.3px;
+.launch-logo-img {
+  height: 32px;
+  width: auto;
 }
 
 /* Spinner */
