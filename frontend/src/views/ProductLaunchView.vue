@@ -166,9 +166,8 @@ onMounted(async () => {
   margin-bottom: 2rem;
 }
 .launch-logo-img {
-  width: 32px; height: 32px;
-  object-fit: cover;
-  border-radius: 6px;
+  height: 32px;
+  width: auto;
 }
 .launch-logo span {
   font-size: 1.15rem;

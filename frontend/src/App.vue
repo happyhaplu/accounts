@@ -3,9 +3,7 @@
     <!-- Top navbar — only for authenticated pages -->
     <nav v-if="auth.isAuthenticated" class="top-nav">
       <div class="nav-left">
-        <div class="nav-logo-mark">
-          <img src="/icon.svg" alt="Gour" class="nav-logo-img" />
-        </div>
+        <img src="/icon.svg" alt="Gour" class="nav-logo-img" />
         <span class="nav-brand">Outcraftly</span>
         <span class="nav-section">Accounts</span>
       </div>
@@ -213,14 +211,9 @@ button { font-family: inherit; }
   justify-content: space-between; padding: 0 24px; gap: 16px;
 }
 .nav-left { display: flex; align-items: center; gap: 10px; }
-.nav-logo-mark {
-  width: 30px; height: 30px;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  overflow: hidden; border-radius: 6px;
-}
 .nav-logo-img {
-  width: 30px; height: 30px;
-  object-fit: cover;
+  height: 26px;
+  width: auto;
 }
 .nav-brand  { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.2px; }
 .nav-section {
@@ -322,8 +315,8 @@ button { font-family: inherit; }
   letter-spacing: -0.2px;
 }
 .apps-brand-icon {
-  width: 22px; height: 22px;
-  object-fit: cover; border-radius: 4px;
+  height: 20px;
+  width: auto;
 }
 .apps-panel-label {
   font-size: 11px; font-weight: 600;

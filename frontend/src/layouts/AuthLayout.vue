@@ -4,10 +4,7 @@
     <aside class="auth-panel">
       <div class="panel-inner">
         <div class="panel-logo">
-          <div class="logo-badge">
-            <img class="logo-img" src="/icon.svg" alt="Gour" />
-          </div>
-          <span>Outcraftly</span>
+          <img class="logo-img" src="/logo.svg" alt="Gour" />
         </div>
 
         <div class="panel-body">
@@ -100,26 +97,11 @@ const features = [
   gap: 11px;
   margin-bottom: 80px;
 }
-.logo-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-}
 .logo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.panel-logo span {
-  font-size: 17px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.3px;
+  height: 36px;
+  width: auto;
+  flex-shrink: 0;
+  filter: brightness(0) invert(1);
 }
 
 /* Body */

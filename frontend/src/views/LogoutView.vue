@@ -60,8 +60,8 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: center;
 }
 .logout-logo {
-  width: 48px; height: 48px;
-  object-fit: cover; border-radius: 10px;
+  height: 48px;
+  width: auto;
 }
 .logout-card h2 {
   font-size: 1.25rem;

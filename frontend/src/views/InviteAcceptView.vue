@@ -190,8 +190,8 @@ function handleLogout() {
   font-size: 18px; font-weight: 700; color: var(--text, #202124);
 }
 .invite-brand-icon {
-  width: 28px; height: 28px;
-  object-fit: cover; border-radius: 6px;
+  height: 26px;
+  width: auto;
 }
 
 /* ── States ─────────────────────────────────────────────── */
