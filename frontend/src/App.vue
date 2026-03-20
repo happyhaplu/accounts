@@ -210,12 +210,12 @@ button { font-family: inherit; }
 }
 .nav-left { display: flex; align-items: center; gap: 10px; }
 .nav-logo-img {
-  height: 22px;
+  height: 28px;
   width: auto;
 }
 .nav-section {
-  font-size: 13px; color: var(--text-muted);
-  padding-left: 8px; border-left: 1.5px solid var(--border); margin-left: 2px;
+  font-size: 18px; font-weight: 500; color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .nav-right { display: flex; align-items: center; gap: 12px; }
