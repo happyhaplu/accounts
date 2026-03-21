@@ -73,7 +73,7 @@ export const authAPI = {
   listProducts:  () => api.get('/products'),
   // Launch a product — backend validates subscription and returns the callback URL.
   // Call launchProduct(name) from the dashboard (uses DB-configured URL).
-  // Call launchProduct(name, 'https://warmup.outcraftly.com/callback') when
+  // Call launchProduct(name, 'https://warmup.gour.io/callback') when
   // the product app redirected the user here with a specific redirect_uri.
   launchProduct: (name, redirectUri) =>
     api.get(`/products/${name}/launch`, {

@@ -125,7 +125,7 @@ func Register(c *fiber.Ctx) error {
 
 	// Send OTP email asynchronously.
 	go func() {
-		if err := mailer.Send(user.Email, "Your Outcraftly verification code", mailer.OTPBody(otp, "email_verify")); err != nil {
+		if err := mailer.Send(user.Email, "Your Gour verification code", mailer.OTPBody(otp, "email_verify")); err != nil {
 			fmt.Fprintf(os.Stderr, "[mailer] ERROR sending OTP to %s: %v\n", user.Email, err)
 		} else {
 			fmt.Printf("[mailer] OTP sent to %s\n", user.Email)
@@ -228,7 +228,7 @@ func ResendVerification(c *fiber.Ctx) error {
 
 	otp := storeOTP(&user, "email_verify")
 	go func() {
-		if err := mailer.Send(user.Email, "Your Outcraftly verification code", mailer.OTPBody(otp, "email_verify")); err != nil {
+		if err := mailer.Send(user.Email, "Your Gour verification code", mailer.OTPBody(otp, "email_verify")); err != nil {
 			fmt.Fprintf(os.Stderr, "[mailer] ERROR resending OTP to %s: %v\n", user.Email, err)
 		} else {
 			fmt.Printf("[mailer] OTP resent to %s\n", user.Email)
@@ -362,7 +362,7 @@ func ForgotPassword(c *fiber.Ctx) error {
 
 	otp := storeOTP(&user, "password_reset")
 	go func() {
-		if err := mailer.Send(user.Email, "Your Outcraftly password reset code", mailer.OTPBody(otp, "password_reset")); err != nil {
+		if err := mailer.Send(user.Email, "Your Gour password reset code", mailer.OTPBody(otp, "password_reset")); err != nil {
 			fmt.Fprintf(os.Stderr, "[mailer] ERROR sending reset OTP to %s: %v\n", user.Email, err)
 		} else {
 			fmt.Printf("[mailer] reset OTP sent to %s\n", user.Email)

@@ -1,5 +1,5 @@
 /**
- * k6 Load Test — Outcraftly Accounts API
+ * k6 Load Test — Gour Accounts API
  *
  * Install k6:  https://k6.io/docs/getting-started/installation/
  * Run:         k6 run scripts/load_test.js

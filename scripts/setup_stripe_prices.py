@@ -4,7 +4,7 @@ Creates Stripe test prices for each product and sets stripe_price_id via admin A
 
 Required environment variables (export before running):
   STRIPE_SECRET_KEY   — Stripe test secret key (sk_test_...)
-  ADMIN_SECRET        — X-Admin-Secret header value  (default: outcraftly-admin-dev-secret)
+  ADMIN_SECRET        — X-Admin-Secret header value  (default: gour-admin-dev-secret)
   API_BASE            — backend URL                  (default: http://localhost:8080/api/v1)
 
 Run:
@@ -20,7 +20,7 @@ import urllib.error
 import base64
 
 STRIPE_SK    = os.getenv("STRIPE_SECRET_KEY", "")
-ADMIN_SECRET = os.getenv("ADMIN_SECRET", "outcraftly-admin-dev-secret")
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "gour-admin-dev-secret")
 API_BASE     = os.getenv("API_BASE", "http://localhost:8080/api/v1")
 
 if not STRIPE_SK:

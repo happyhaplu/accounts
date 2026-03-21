@@ -70,7 +70,7 @@ claims := jwt.MapClaims{
 "sub":   userID,
 "email": email,
 "role":  "user",
-"iss":   "accounts.outcraftly.com",
+"iss":   "accounts.gour.io",
 "aud":   "reach",
 "exp":   time.Now().Add(24 * time.Hour).Unix(),
 "iat":   time.Now().Unix(),

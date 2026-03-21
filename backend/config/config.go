@@ -21,8 +21,8 @@ AllowOrigins string
 
 // ── Cross-app auth (Reach, Warmup, etc.) ──────────────────────
 Environment      string   // "development" | "production"
-AccountsBaseURL  string   // e.g. https://accounts.outcraftly.com
-JWTIssuer        string   // iss claim — accounts.outcraftly.com
+AccountsBaseURL  string   // e.g. https://accounts.gour.io
+JWTIssuer        string   // iss claim — accounts.gour.io
 JWTAudience      string   // aud claim — reach
 JWTPrivateKey    string   // RS256 PEM (optional, falls back to HS256)
 JWTPublicKey     string   // RS256 PEM (optional)
@@ -56,13 +56,13 @@ DBHost:       getEnv("DB_HOST", "localhost"),
 DBPort:       getEnv("DB_PORT", "5432"),
 DBUser:       getEnv("DB_USER", "postgres"),
 DBPassword:   getEnv("DB_PASSWORD", ""),
-DBName:       getEnv("DB_NAME", "outcraftly_accounts"),
+DBName:       getEnv("DB_NAME", "gour_accounts"),
 JWTSecret:    getEnv("JWT_SECRET", "change-me-in-production"),
 AllowOrigins: allowOrigins,
 
 Environment:      getEnv("APP_ENV", getEnv("ENV", "development")),
 AccountsBaseURL:  getEnv("ACCOUNTS_BASE_URL", getEnv("APP_URL", "http://localhost:5173")),
-JWTIssuer:        getEnv("JWT_ISSUER", "accounts.outcraftly.com"),
+JWTIssuer:        getEnv("JWT_ISSUER", "accounts.gour.io"),
 JWTAudience:      getEnv("JWT_AUDIENCE", "reach"),
 JWTPrivateKey:    getEnv("JWT_PRIVATE_KEY", ""),
 JWTPublicKey:     getEnv("JWT_PUBLIC_KEY", ""),

@@ -14,7 +14,7 @@ import (
 // Dynamic CORS origin allowlist — driven by the product registry in the DB.
 //
 // Every product has redirect_urls (e.g. ["http://localhost:3000/callback",
-// "https://warmup.outcraftly.com/callback"]).  We extract the origin
+// "https://warmup.gour.io/callback"]).  We extract the origin
 // (scheme://host) from each URL and cache the set.  The cache refreshes every
 // 60 seconds so that newly registered products (via admin API) are picked up
 // without a restart.

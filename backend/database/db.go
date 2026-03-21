@@ -37,7 +37,7 @@ func defaultProducts() []models.Product {
 			StripePriceID: emailWarmupPriceID,
 			RedirectURLs: []string{
 				"http://localhost:3000/callback",
-				"https://warmup.outcraftly.com/callback",
+				"https://warmup.gour.io/callback",
 			},
 		},
 		{
@@ -46,7 +46,7 @@ func defaultProducts() []models.Product {
 			StripePriceID: reachPriceID,
 			RedirectURLs: []string{
 				"http://localhost:4000/auth/callback",
-				"https://reach.outcraftly.com/auth/callback",
+				"https://reach.gour.io/auth/callback",
 			},
 		},
 	}

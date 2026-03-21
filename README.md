@@ -1,6 +1,6 @@
-# Outcraftly Accounts
+# Gour Accounts
 
-> Centralized identity & authentication platform for the Outcraftly SaaS suite.  
+> Centralized identity & authentication platform for the Gour SaaS suite.  
 > Works like Google Accounts — one login for all products.
 
 ---
@@ -36,8 +36,8 @@ accounts/
 make db-setup
 
 # Or manually:
-psql -U postgres -c "CREATE DATABASE outcraftly_accounts;"
-psql -U postgres -d outcraftly_accounts -f db/schema.sql
+psql -U postgres -c "CREATE DATABASE gour_accounts;"
+psql -U postgres -d gour_accounts -f db/schema.sql
 ```
 
 ### 2 — Backend
@@ -107,7 +107,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password
-DB_NAME=outcraftly_accounts
+DB_NAME=gour_accounts
 JWT_SECRET=change-this-to-a-long-random-secret
 ```
 

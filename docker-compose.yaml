@@ -35,23 +35,23 @@ services:
 
       # ── Auth & JWT ────────────────────────────────────────────────
       APP_ENV:                ${APP_ENV:-production}
-      JWT_SECRET:             ${JWT_SECRET:-outcraftly-jwt-production-secret-change-me}
-      JWT_ISSUER:             ${JWT_ISSUER:-accounts.outcraftly.com}
+      JWT_SECRET:             ${JWT_SECRET:-gour-jwt-production-secret-change-me}
+      JWT_ISSUER:             ${JWT_ISSUER:-accounts.gour.io}
       JWT_AUDIENCE:           ${JWT_AUDIENCE:-reach}
       JWT_PRIVATE_KEY:        ${JWT_PRIVATE_KEY:-}
       JWT_PUBLIC_KEY:         ${JWT_PUBLIC_KEY:-}
       JWKS_URL:               ${JWKS_URL:-}
-      ACCOUNTS_BASE_URL:      ${ACCOUNTS_BASE_URL:-https://accounts.outcraftly.com}
-      APP_URL:                ${APP_URL:-https://accounts.outcraftly.com}
+      ACCOUNTS_BASE_URL:      ${ACCOUNTS_BASE_URL:-https://accounts.gour.io}
+      APP_URL:                ${APP_URL:-https://accounts.gour.io}
 
       # ── CORS & Redirect allowlists ────────────────────────────────
-      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.outcraftly.com,https://warmup.outcraftly.com,https://reach.outcraftly.com}
-      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.outcraftly.com,https://warmup.outcraftly.com,https://reach.outcraftly.com}
-      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-http://localhost:4000/auth/callback,http://localhost:3000/callback,https://reach.outcraftly.com/auth/callback,https://warmup.outcraftly.com/callback}
-      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-http://localhost:3000,http://localhost:4000,https://warmup.outcraftly.com,https://reach.outcraftly.com}
+      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.gour.io,https://warmup.gour.io,https://reach.gour.io}
+      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.gour.io,https://warmup.gour.io,https://reach.gour.io}
+      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-http://localhost:4000/auth/callback,http://localhost:3000/callback,https://reach.gour.io/auth/callback,https://warmup.gour.io/callback}
+      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-http://localhost:3000,http://localhost:4000,https://warmup.gour.io,https://reach.gour.io}
 
       # ── Admin ─────────────────────────────────────────────────────
-      ADMIN_SECRET:           ${ADMIN_SECRET:-outcraftly-admin-secret-change-me}
+      ADMIN_SECRET:           ${ADMIN_SECRET:-gour-admin-secret-change-me}
 
       # ── Email (SMTP — ZeptoMail) ─────────────────────────────────
       SMTP_HOST:              ${SMTP_HOST:-smtp.zeptomail.in}

@@ -3,7 +3,7 @@
 E2E test: login → list workspaces → create checkout session → verify response.
 
 Required environment variables (or set defaults below):
-  ADMIN_SECRET   — X-Admin-Secret value  (default: outcraftly-admin-dev-secret)
+  ADMIN_SECRET   — X-Admin-Secret value  (default: gour-admin-dev-secret)
   TEST_EMAIL     — test user email        (default: test@example.com)
   TEST_PASSWORD  — test user password     (default: Test@1234)
   API_BASE       — backend URL            (default: http://localhost:8080/api/v1)
@@ -23,7 +23,7 @@ API = os.getenv("API_BASE", "http://localhost:8080/api/v1")
 EMAIL    = os.getenv("TEST_EMAIL",    "test@example.com")
 PASSWORD = os.getenv("TEST_PASSWORD", "Test@1234")
 
-ADMIN_SECRET = os.getenv("ADMIN_SECRET", "outcraftly-admin-dev-secret")
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "gour-admin-dev-secret")
 
 
 def post(path, data, token=None):

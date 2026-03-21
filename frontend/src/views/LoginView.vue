@@ -79,11 +79,11 @@ const showPw  = ref(false)
 const loading = ref(false)
 const error   = ref('')
 
-// Preserve redirect_uri from URL query (e.g. /login?redirect_uri=https://warmup.outcraftly.com/callback)
+// Preserve redirect_uri from URL query (e.g. /login?redirect_uri=https://warmup.gour.io/callback)
 const redirectUri = route.query.redirect_uri ?? ''
 
 // Extract a human-readable hostname for the "Sign in to continue to X" subtitle.
-// e.g. "https://warmup.outcraftly.com/callback" → "warmup.outcraftly.com"
+// e.g. "https://warmup.gour.io/callback" → "warmup.gour.io"
 const redirectHost = redirectUri
   ? (() => { try { return new URL(redirectUri).hostname } catch { return '' } })()
   : ''

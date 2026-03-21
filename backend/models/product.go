@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Product represents a single product offering in the Outcraftly registry.
+// Product represents a single product offering in the Gour registry.
 // New products are added by inserting a row — no code changes required elsewhere.
 type Product struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey"                          json:"id"`

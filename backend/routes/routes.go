@@ -28,7 +28,7 @@ func Setup(app *fiber.App) {
 	api.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status":  "ok",
-			"service": "Outcraftly Accounts",
+			"service": "Gour Accounts",
 		})
 	})
 
@@ -69,7 +69,7 @@ func Setup(app *fiber.App) {
 	api.Get("/workspace", p, handlers.GetWorkspace)
 	// Products list (authenticated users)
 	api.Get("/products", p, handlers.ListProducts)
-	// Product launch & subscription check (for external Outcraftly apps)
+	// Product launch & subscription check (for external Gour apps)
 	api.Get("/products/:name/launch", p, handlers.LaunchProduct)
 	api.Get("/products/:name/check",     handlers.CheckProductSubscription)
 	// Accept invite (user must be logged in)

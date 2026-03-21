@@ -93,7 +93,7 @@ func SendInvite(c *fiber.Ctx) error {
 	link := appURL + "/invite?token=" + token
 	go func() {
 		body := mailer.WorkspaceInviteBody(ws.Name, inviter.Name, inviter.Email, req.Role, link)
-		if err := mailer.Send(req.Email, "You're invited to join "+ws.Name+" on Outcraftly", body); err != nil {
+		if err := mailer.Send(req.Email, "You're invited to join "+ws.Name+" on Gour", body); err != nil {
 			fmt.Fprintf(os.Stderr, "[mailer] ERROR sending invite to %s: %v\n", req.Email, err)
 		} else {
 			fmt.Printf("[mailer] invite email sent to %s\n", req.Email)

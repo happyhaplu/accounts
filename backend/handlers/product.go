@@ -173,7 +173,7 @@ func DeactivateProduct(c *fiber.Ctx) error {
 //   → picks the best URL from product.redirect_urls (https in prod / localhost in dev)
 //
 // Flow B — external product redirect (Google-style):
-//   GET /api/v1/products/email-warmup/launch?redirect_uri=https://warmup.outcraftly.com/callback
+//   GET /api/v1/products/email-warmup/launch?redirect_uri=https://warmup.gour.io/callback
 //   → validates redirect_uri against product's allowed origins, then uses it
 //
 // Response: 200 { "redirect_url": "https://...?token=<jwt>", "token": "<jwt>" }
@@ -334,7 +334,7 @@ func isGloballyAllowedOrigin(redirectURI string) bool {
 	return false
 }
 
-// uriOrigin returns "scheme://host" (e.g. "https://warmup.outcraftly.com").
+// uriOrigin returns "scheme://host" (e.g. "https://warmup.gour.io").
 func uriOrigin(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil || u.Host == "" {
@@ -345,7 +345,7 @@ func uriOrigin(rawURL string) string {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/products/:name/check
-// Called by external Outcraftly apps (e.g. warmup.outcraftly.com) to verify
+// Called by external Gour apps (e.g. warmup.gour.io) to verify
 // whether the bearer of a launch token has an active subscription.
 // Header: Authorization: Bearer <launch-token>
 //

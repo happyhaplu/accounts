@@ -25,7 +25,7 @@ database.Connect(cfg)
 
 // Fiber app
 app := fiber.New(fiber.Config{
-AppName: "Outcraftly Accounts API v1.0",
+AppName: "Gour Accounts API v1.0",
 })
 
 // Global middleware
@@ -44,6 +44,6 @@ AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 // Register all routes
 routes.Setup(app)
 
-log.Printf("🚀 Outcraftly Accounts API running on :%s", cfg.Port)
+log.Printf("🚀 Gour Accounts API running on :%s", cfg.Port)
 log.Fatal(app.Listen(":" + cfg.Port))
 }

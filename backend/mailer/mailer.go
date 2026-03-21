@@ -29,7 +29,7 @@ func Send(to, subject, htmlBody string) error {
 	}
 	msg := "MIME-Version: 1.0\r\n" +
 		"Content-Type: text/html; charset=UTF-8\r\n" +
-		"From: Outcraftly <" + from + ">\r\n" +
+		"From: Gour <" + from + ">\r\n" +
 		replyToHeader +
 		"To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n\r\n" +
@@ -49,10 +49,10 @@ func Send(to, subject, htmlBody string) error {
 func VerifyEmailBody(link string) string {
 	return shell(
 		"Verify your email address",
-		"Welcome to Outcraftly! Click the button below to verify your email address and activate your account.",
+		"Welcome to Gour! Click the button below to verify your email address and activate your account.",
 		"Verify email address",
 		link,
-		"This link expires in 24&nbsp;hours. If you didn't create an Outcraftly account, you can safely ignore this email.",
+		"This link expires in 24&nbsp;hours. If you didn't create an Gour account, you can safely ignore this email.",
 	)
 }
 
@@ -60,7 +60,7 @@ func VerifyEmailBody(link string) string {
 func PasswordResetBody(link string) string {
 	return shell(
 		"Reset your password",
-		"We received a request to reset the password for your Outcraftly account. Click below to choose a new password.",
+		"We received a request to reset the password for your Gour account. Click below to choose a new password.",
 		"Reset my password",
 		link,
 		"This link expires in 1&nbsp;hour. If you didn't request a password reset, no action is needed.",
@@ -72,12 +72,12 @@ func OTPBody(otp, purpose string) string {
         heading, intro, note := "", "", ""
         if purpose == "password_reset" {
                 heading = "Password reset code"
-                intro = "We received a request to reset the password for your Outcraftly account. Enter the code below in the app to continue."
+                intro = "We received a request to reset the password for your Gour account. Enter the code below in the app to continue."
                 note = "This code expires in <strong>10&nbsp;minutes</strong>. If you didn't request a password reset, you can safely ignore this email."
         } else {
                 heading = "Verify your email"
                 intro = "Thanks for signing up! Enter the code below in the app to verify your email address and activate your account."
-                note = "This code expires in <strong>10&nbsp;minutes</strong>. If you didn't create an Outcraftly account, you can safely ignore this email."
+                note = "This code expires in <strong>10&nbsp;minutes</strong>. If you didn't create an Gour account, you can safely ignore this email."
         }
         return `<!DOCTYPE html>
 <html lang="en">
@@ -95,7 +95,7 @@ func OTPBody(otp, purpose string) string {
       <!-- Header -->
       <tr>
         <td style="background:linear-gradient(135deg,#1565c0 0%,#0d47a1 100%);padding:28px 40px;text-align:center">
-          <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px">✦ Outcraftly</span>
+          <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px">✦ Gour</span>
         </td>
       </tr>
       <!-- Body -->
@@ -125,7 +125,7 @@ func OTPBody(otp, purpose string) string {
         <td style="padding:20px 40px 28px;border-top:1px solid #f1f3f4">
           <p style="margin:0;font-size:12px;color:#b0b4ba;line-height:1.6">
             ` + note + `<br>
-            &copy; 2026 Outcraftly, Inc.
+            &copy; 2026 Gour, Inc.
           </p>
         </td>
       </tr>
@@ -148,7 +148,7 @@ func WorkspaceInviteBody(wsName, inviterName, inviterEmail, role, link string) s
 	}
 	return shell(
 		"You've been invited to join "+wsName,
-		by+" has invited you to collaborate on <strong>"+wsName+"</strong> as a <strong>"+roleLabel+"</strong> on Outcraftly. Click the button below to accept your invitation.",
+		by+" has invited you to collaborate on <strong>"+wsName+"</strong> as a <strong>"+roleLabel+"</strong> on Gour. Click the button below to accept your invitation.",
 		"Accept invitation",
 		link,
 		"This invitation expires in 7&nbsp;days. If you weren't expecting this, you can safely ignore it.",
@@ -174,7 +174,7 @@ func shell(heading, intro, btnText, btnURL, note string) string {
       <!-- Header -->
       <tr>
         <td style="background:linear-gradient(135deg,#1565c0 0%,#0d47a1 100%);padding:28px 40px;text-align:center">
-          <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px">✦ Outcraftly</span>
+          <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px">✦ Gour</span>
         </td>
       </tr>
 
@@ -205,7 +205,7 @@ func shell(heading, intro, btnText, btnURL, note string) string {
         <td style="padding:20px 40px 28px;border-top:1px solid #f1f3f4">
           <p style="margin:0;font-size:12px;color:#b0b4ba;line-height:1.6">
             ` + note + `<br>
-            &copy; 2026 Outcraftly, Inc.
+            &copy; 2026 Gour, Inc.
           </p>
         </td>
       </tr>
