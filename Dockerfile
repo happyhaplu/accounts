@@ -31,7 +31,8 @@ FROM nginx:1.25-alpine
 # ca-certificates → HTTPS outbound (SMTP, Stripe)
 # tzdata          → correct log timestamps
 # gettext         → envsubst for nginx config templating
-RUN apk --no-cache add ca-certificates tzdata gettext
+# wget            → Docker / Coolify health checks
+RUN apk --no-cache add ca-certificates tzdata gettext wget
 
 # Go API binary
 COPY --from=backend-builder /app/server /app/server
@@ -48,5 +49,8 @@ RUN chmod +x /docker-start.sh
 
 # nginx: 80  |  Go API: 8080 (internal, not exposed outside container)
 EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD wget -qO- http://localhost:80/ || exit 1
 
 CMD ["/docker-start.sh"]

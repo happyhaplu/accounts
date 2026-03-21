@@ -5,13 +5,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER:     ${DB_USER:-outcraftly}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-outcraftly}
+      POSTGRES_USER:     ${DB_USER:-gour}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-gour}
       POSTGRES_DB:       ${DB_NAME:-accounts}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-outcraftly} -d ${DB_NAME:-accounts}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gour} -d ${DB_NAME:-accounts}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,8 +29,8 @@ services:
       PORT:                   ${PORT:-8080}
       DB_HOST:                db               # service name above
       DB_PORT:                5432
-      DB_USER:                ${DB_USER:-outcraftly}
-      DB_PASSWORD:            ${DB_PASSWORD:-outcraftly}
+      DB_USER:                ${DB_USER:-gour}
+      DB_PASSWORD:            ${DB_PASSWORD:-gour}
       DB_NAME:                ${DB_NAME:-accounts}
 
       # ── Auth & JWT ────────────────────────────────────────────────
@@ -88,15 +88,17 @@ services:
       backend:
         condition: service_healthy
     environment:
-      BACKEND_URL: http://backend:8080
+      - SERVICE_FQDN_FRONTEND=https://accounts.gour.io
+      - BACKEND_URL=http://backend:8080
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.frontend.loadbalancer.server.port=80
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:80/ > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    # No host port mapping — Coolify's Traefik reverse proxy routes external
-    # traffic to this container automatically based on the domain you set in Coolify.
     expose:
       - "80"
 
