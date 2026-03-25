@@ -139,6 +139,7 @@ const appsOpen    = ref(false)
 const apps = [
   { name: 'Email Warmup', short: 'EW', gradient: 'linear-gradient(135deg,#ea4335,#fb8c00)', shadow: 'rgba(234,67,53,0.35)', url: '/products/email-warmup/launch', status: 'Active' },
   { name: 'Reach',        short: 'RE', gradient: 'linear-gradient(135deg,#4285f4,#1a73e8)', shadow: 'rgba(66,133,244,0.35)', url: '/products/reach/launch',        status: 'Active' },
+  { name: 'SendFlow',     short: 'SF', gradient: 'linear-gradient(135deg,#7c3aed,#a855f7)', shadow: 'rgba(124,58,237,0.35)', url: '/products/sendflow/launch',     status: 'Active' },
   { name: 'Cold Email',   short: 'CE', gradient: 'linear-gradient(135deg,#34a853,#137333)', shadow: 'rgba(52,168,83,0.35)',  url: '/products/cold_email/launch',   status: 'Coming soon' },
   { name: 'LinkedIn',     short: 'LI', gradient: 'linear-gradient(135deg,#0077b5,#005582)', shadow: 'rgba(0,119,181,0.35)',  url: '/products/linkedin/launch',     status: 'Coming soon' },
 ]

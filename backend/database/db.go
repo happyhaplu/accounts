@@ -29,6 +29,12 @@ func defaultProducts() []models.Product {
 		reachPriceID = &v
 	}
 
+	// Read optional Stripe price ID for sendflow.
+	var sendflowPriceID *string
+	if v := os.Getenv("STRIPE_SENDFLOW_PRICE_ID"); v != "" {
+		sendflowPriceID = &v
+	}
+
 	return []models.Product{
 		{Name: "cold_email", Description: "AI-powered cold email outreach and automation"},
 		{
@@ -47,6 +53,15 @@ func defaultProducts() []models.Product {
 			RedirectURLs: []string{
 				"http://localhost:4000/auth/callback",
 				"https://reach.gour.io/auth/callback",
+			},
+		},
+		{
+			Name:          "sendflow",
+			Description:   "Multi-channel cold outreach — email sequencing, sender rotation, and deliverability management",
+			StripePriceID: sendflowPriceID,
+			RedirectURLs: []string{
+				"http://localhost:3000/callback",
+				"https://sendflow.gour.io/callback",
 			},
 		},
 	}

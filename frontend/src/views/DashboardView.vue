@@ -244,6 +244,7 @@ const PRODUCT_META = {
   'cold_email':   { icon: '📧', displayName: 'Cold Email' },
   'reach':        { icon: '🔗', displayName: 'Reach — LinkedIn Automation' },
   'warmup':       { icon: '🌡️', displayName: 'Inbox Warmup' },
+  'sendflow':     { icon: '📨', displayName: 'SendFlow — Cold Outreach' },
 }
 
 // ── State ─────────────────────────────────────────────────────────────────

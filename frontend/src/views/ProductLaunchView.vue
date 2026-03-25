@@ -65,6 +65,7 @@ const PRODUCT_META = {
   'cold_email':   'Cold Email',
   'reach':        'Reach — LinkedIn Automation',
   'warmup':       'Inbox Warmup',
+  'sendflow':     'SendFlow — Cold Outreach',
 }
 const displayName = PRODUCT_META[slug] ?? slug
 
