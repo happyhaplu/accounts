@@ -31,6 +31,7 @@ PRODUCTS = [
     {"name": "cold_email", "display": "Cold Email",  "amount": 2900},
     {"name": "linkedin",   "display": "LinkedIn",    "amount": 1900},
     {"name": "warmup",     "display": "Email Warmup","amount": 990},
+    {"name": "sendflow",   "display": "SendFlow",    "amount": 2900},
 ]
 
 
