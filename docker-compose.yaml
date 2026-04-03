@@ -35,7 +35,7 @@ services:
 
       # ── Auth & JWT ────────────────────────────────────────────────
       APP_ENV:                ${APP_ENV:-production}
-      JWT_SECRET:             "gour-jwt-production-secret-change-me"
+      JWT_SECRET:             ${JWT_SECRET:-gour-jwt-production-secret-change-me}
       JWT_ISSUER:             ${JWT_ISSUER:-accounts.gour.io}
       JWT_AUDIENCE:           ${JWT_AUDIENCE:-reach}
       JWT_PRIVATE_KEY:        ${JWT_PRIVATE_KEY:-}
