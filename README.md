@@ -109,7 +109,32 @@ DB_USER=postgres
 DB_PASSWORD=your_password
 DB_NAME=gour_accounts
 JWT_SECRET=change-this-to-a-long-random-secret
+# Keep false in production. Products should be created from Admin UI/API.
+SEED_DEFAULT_PRODUCTS=false
 ```
+
+---
+
+## Production Notes (Auth-Service Mode)
+
+- Accounts is identity + access only.
+- Products own pricing pages and checkout in Stripe.
+- Accounts only tracks which workspace is subscribed to which product/plan.
+
+### Product registry behavior
+
+- Set `SEED_DEFAULT_PRODUCTS=false` (default) so no products are auto-created.
+- Create products manually from Admin panel after deploy.
+
+### Stripe metadata contract (required)
+
+When a product creates Stripe checkout/subscription, include:
+
+- `metadata.workspace_id` = Accounts workspace UUID
+- `metadata.product_id` = Accounts product UUID
+- `metadata.plan_name` = plan label (`starter`, `pro`, etc.)
+
+This is how Accounts maps Stripe subscriptions back to product access.
 
 ---
 

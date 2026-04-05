@@ -1,6 +1,9 @@
 package models
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,22 +13,39 @@ import (
 // Product represents a single product offering in the Gour registry.
 // New products are added by inserting a row — no code changes required elsewhere.
 type Product struct {
-	ID             uuid.UUID `gorm:"type:uuid;primaryKey"                          json:"id"`
-	Name           string    `gorm:"type:varchar(80);uniqueIndex;not null"          json:"name"`
-	Description    string    `gorm:"type:text"                                     json:"description"`
-	// StripePriceID is the Stripe Price ID (price_xxx) for this product's default plan.
-	// Set via admin PATCH /api/v1/admin/products/:id. Required for checkout button to appear.
-	StripePriceID  *string  `gorm:"type:varchar(200)"                              json:"stripe_price_id,omitempty"`
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey"                          json:"id"`
+	Name         string    `gorm:"type:varchar(80);uniqueIndex;not null"          json:"name"`
+	Description  string    `gorm:"type:text"                                     json:"description"`
 	// RedirectURLs holds per-product callback URLs (JSON-encoded in a text column).
-	// Index 0 is used as a fallback; production URLs start with "https://", dev with "http://localhost".
-	RedirectURLs   []string `gorm:"serializer:json;type:text;default:'[]'"         json:"redirect_urls"`
-	IsActive       bool     `gorm:"not null;default:true"                          json:"is_active"`
-	CreatedAt      time.Time `                                                     json:"created_at"`
+	// Index 0 is used as the product's home URL shown in the Billing page.
+	RedirectURLs []string `gorm:"serializer:json;type:text;default:'[]'"          json:"redirect_urls"`
+	IsActive     bool      `gorm:"not null;default:true"                          json:"is_active"`
+	// APIKey is the secret key given to each product for server-to-server calls.
+	// Format: gour_ce_<32 hex chars>  (e.g. gour_ce_a1b2c3...)
+	// Treat like a password — only shown in the Admin UI, never in public endpoints.
+	APIKey       string    `gorm:"type:varchar(120);uniqueIndex"                  json:"api_key"`
+	CreatedAt    time.Time `                                                      json:"created_at"`
+}
+
+// GenerateAPIKey creates a new random API key in the format gour_ce_<32 hex chars>.
+func GenerateAPIKey() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generateAPIKey: %w", err)
+	}
+	return "gour_ce_" + hex.EncodeToString(b), nil
 }
 
 func (p *Product) BeforeCreate(_ *gorm.DB) error {
 	if p.ID == uuid.Nil {
 		p.ID = uuid.New()
+	}
+	if p.APIKey == "" {
+		key, err := GenerateAPIKey()
+		if err != nil {
+			return err
+		}
+		p.APIKey = key
 	}
 	return nil
 }

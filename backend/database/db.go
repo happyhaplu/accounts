@@ -3,7 +3,6 @@ package database
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"outcraftly/accounts/config"
 	"outcraftly/accounts/models"
@@ -12,60 +11,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
-
-// defaultProducts returns the canonical product registry.
-// Stripe price IDs are read from environment variables so they can differ
-// between dev (price_test_…) and production (price_live_…) without code changes.
-func defaultProducts() []models.Product {
-	// Read optional Stripe price ID for email-warmup.
-	var emailWarmupPriceID *string
-	if v := os.Getenv("STRIPE_EMAIL_WARMUP_PRICE_ID"); v != "" {
-		emailWarmupPriceID = &v
-	}
-
-	// Read optional Stripe price ID for reach.
-	var reachPriceID *string
-	if v := os.Getenv("STRIPE_REACH_PRICE_ID"); v != "" {
-		reachPriceID = &v
-	}
-
-	// Read optional Stripe price ID for sendflow.
-	var sendflowPriceID *string
-	if v := os.Getenv("STRIPE_SENDFLOW_PRICE_ID"); v != "" {
-		sendflowPriceID = &v
-	}
-
-	return []models.Product{
-		{Name: "cold_email", Description: "AI-powered cold email outreach and automation"},
-		{
-			Name:          "email-warmup",
-			Description:   "Email inbox warm-up to improve deliverability and sender reputation",
-			StripePriceID: emailWarmupPriceID,
-			RedirectURLs: []string{
-				"http://localhost:3000/callback",
-				"https://warmup.gour.io/callback",
-			},
-		},
-		{
-			Name:          "reach",
-			Description:   "LinkedIn automation and outreach — find leads, send connection requests, and manage campaigns at scale",
-			StripePriceID: reachPriceID,
-			RedirectURLs: []string{
-				"http://localhost:4000/auth/callback",
-				"https://reach.gour.io/auth/callback",
-			},
-		},
-		{
-			Name:          "sendflow",
-			Description:   "Multi-channel cold outreach — email sequencing, sender rotation, and deliverability management",
-			StripePriceID: sendflowPriceID,
-			RedirectURLs: []string{
-				"http://localhost:3000/callback",
-				"https://sendflow.gour.io/callback",
-			},
-		},
-	}
-}
 
 // DB is the shared GORM database instance.
 var DB *gorm.DB
@@ -97,56 +42,75 @@ func Connect(cfg *config.Config) {
 		log.Fatalf("❌ Auto-migration failed: %v", err)
 	}
 
-	seedProducts()
+	// Cleanup for removed billing-plan architecture.
+	if err := DB.Exec(`DROP TABLE IF EXISTS product_plans`).Error; err != nil {
+		log.Fatalf("❌ Failed to drop legacy table product_plans: %v", err)
+	}
+
+	if cfg.SeedDefaultProducts {
+		seedDefaultProducts()
+	}
+	ensureProductAPIKeys()
 	log.Println("✅ Database connected and migrations applied")
 }
 
-// seedProducts upserts the default product registry on every startup.
-//
-// • New products (by name) are inserted.
-// • Existing products have their description, redirect_urls, and
-//   stripe_price_id brought in sync with the code/env values so that
-//   deploy-time changes take effect without manual DB patches.
-func seedProducts() {
-	for _, p := range defaultProducts() {
+// seedDefaultProducts inserts a small starter registry for local/dev usage.
+// Production should keep this disabled and manage products from Admin UI.
+func seedDefaultProducts() {
+	defaults := []models.Product{
+		{
+			Name:        "email-warmup",
+			Description: "Email inbox warm-up to improve deliverability and sender reputation",
+			RedirectURLs: []string{
+				"http://localhost:3000/callback",
+				"https://warmup.gour.io/callback",
+			},
+		},
+		{
+			Name:        "reach",
+			Description: "LinkedIn automation and outreach — find leads, send connection requests, and manage campaigns at scale",
+			RedirectURLs: []string{
+				"http://localhost:4000/auth/callback",
+				"https://reach.gour.io/auth/callback",
+			},
+		},
+		{
+			Name:        "sendflow",
+			Description: "Multi-channel cold outreach — email sequencing, sender rotation, and deliverability management",
+			RedirectURLs: []string{
+				"http://localhost:3000/callback",
+				"https://sendflow.gour.io/callback",
+			},
+		},
+	}
+
+	for _, p := range defaults {
 		var existing models.Product
-		if DB.Where("name = ?", p.Name).First(&existing).Error != nil {
-			// ── INSERT ──────────────────────────────────────────────
-			if err := DB.Create(&p).Error; err != nil {
-				log.Printf("[seed] WARNING: could not insert product %q: %v", p.Name, err)
-			} else {
-				log.Printf("[seed] inserted product: %s", p.Name)
-			}
+		if DB.Where("name = ?", p.Name).First(&existing).Error == nil {
 			continue
 		}
-
-		// ── UPDATE existing row to match code/env values ─────────
-		// Use the model struct so GORM's json serializer handles RedirectURLs.
-		existing.Description = p.Description
-		existing.RedirectURLs = p.RedirectURLs
-		existing.IsActive = true
-		// Only overwrite stripe_price_id when the env var is set;
-		// this avoids blanking a price that was configured via admin API.
-		if p.StripePriceID != nil {
-			existing.StripePriceID = p.StripePriceID
-		}
-
-		if err := DB.Save(&existing).Error; err != nil {
-			log.Printf("[seed] WARNING: could not update product %q: %v", p.Name, err)
+		if err := DB.Create(&p).Error; err != nil {
+			log.Printf("[seed] WARNING: could not insert product %q: %v", p.Name, err)
 		} else {
-			log.Printf("[seed] synced product: %s", p.Name)
+			log.Printf("[seed] inserted product: %s", p.Name)
 		}
 	}
+}
 
-	// Deactivate the legacy "warmup" product if it exists — replaced by "email-warmup".
-	if res := DB.Model(&models.Product{}).Where("name = ? AND is_active = true", "warmup").
-		Update("is_active", false); res.RowsAffected > 0 {
-		log.Println("[seed] deactivated legacy product: warmup (replaced by email-warmup)")
-	}
-
-	// Deactivate the standalone "linkedin" product — LinkedIn features are now part of Reach.
-	if res := DB.Model(&models.Product{}).Where("name = ? AND is_active = true", "linkedin").
-		Update("is_active", false); res.RowsAffected > 0 {
-		log.Println("[seed] deactivated legacy product: linkedin (merged into reach)")
+// ensureProductAPIKeys back-fills api_key for rows created before this field existed.
+func ensureProductAPIKeys() {
+	var needsKey []models.Product
+	DB.Where("api_key = '' OR api_key IS NULL").Find(&needsKey)
+	for _, p := range needsKey {
+		key, err := models.GenerateAPIKey()
+		if err != nil {
+			log.Printf("[seed] WARNING: could not generate api_key for %q: %v", p.Name, err)
+			continue
+		}
+		if err := DB.Model(&p).Update("api_key", key).Error; err != nil {
+			log.Printf("[seed] WARNING: could not save api_key for %q: %v", p.Name, err)
+		} else {
+			log.Printf("[seed] generated api_key for existing product: %s", p.Name)
+		}
 	}
 }

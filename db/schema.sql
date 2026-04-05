@@ -37,3 +37,19 @@ CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- ------------------------------------------------------------
+--  products.api_key  (migration — run once on existing DBs)
+-- ------------------------------------------------------------
+-- GORM AutoMigrate adds this column automatically on startup.
+-- If you manage the schema manually, run:
+--
+--   ALTER TABLE products
+--     ADD COLUMN IF NOT EXISTS api_key VARCHAR(120) UNIQUE;
+--
+-- Then back-fill existing rows:
+--
+--   UPDATE products
+--   SET api_key = 'gour_ce_' || encode(gen_random_bytes(16), 'hex')
+--   WHERE api_key IS NULL OR api_key = '';
+--

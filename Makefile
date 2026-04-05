@@ -73,7 +73,12 @@ clean: ## Remove build artefacts
 
 # ── Tests ─────────────────────────────────────────────────────
 .PHONY: test
-test: test-backend test-frontend ## Run all tests (backend + frontend unit)
+test: lint test-backend test-frontend ## Run lint + all backend + frontend unit tests
+
+.PHONY: lint
+lint: ## Run Go vet static analysis (fast, no extra tools required)
+	cd backend && $(GO) vet ./...
+	@echo "✔ go vet passed"
 
 .PHONY: test-backend
 test-backend: ## Run all Go tests (unit + integration, with race detector if available)
@@ -87,6 +92,15 @@ test-backend-unit: ## Run Go unit tests only (no DB)
 .PHONY: test-backend-integration
 test-backend-integration: ## Run Go integration tests (in-memory SQLite)
 	cd backend && $(GO) test ./integration_test/... -v -count=1 -timeout=120s
+
+.PHONY: test-smoke
+test-smoke: ## Run smoke tests — every route returns expected status on fresh boot
+	cd backend && $(GO) test ./integration_test/... -run "Smoke" -v -count=1 -timeout=60s
+
+.PHONY: test-contract
+test-contract: ## Run API contract tests — response shape invariants (backend + frontend)
+	cd backend && $(GO) test ./handlers/... -run "Contract" -v -count=1
+	cd frontend && npm run test
 
 .PHONY: test-frontend
 test-frontend: ## Run Vitest unit tests
@@ -123,7 +137,7 @@ test-load-smoke: ## Run a single-VU smoke test with k6
 	k6 run --vus 1 --iterations 1 scripts/load_test.js
 
 .PHONY: test-all
-test-all: test test-e2e test-a11y ## Run every test suite including E2E and accessibility
+test-all: lint test test-e2e test-a11y ## Run every test suite: lint, unit, integration, E2E, accessibility
 
 # ── Git hooks ─────────────────────────────────────────────────
 .PHONY: hooks

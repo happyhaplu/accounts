@@ -1,3 +1,7 @@
+# ── Root-level .env (used by docker-compose locally) ──────────────────────
+# Coolify sets these in its UI — do not commit real secrets.
+.env
+
 # ── Backend ────────────────────────────────────────────────────────────────
 backend/.env
 backend/bin/

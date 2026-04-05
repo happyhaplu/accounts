@@ -43,81 +43,107 @@
         </div>
       </section>
 
-      <!-- ── Products & Plans ─────────────────────────────────── -->
+      <!-- \u2500\u2500 Your Subscriptions \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 -->
       <section v-if="ws" class="section">
         <div class="section-head">
           <div class="section-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
             </svg>
           </div>
           <div>
-            <h2>Products &amp; Plans</h2>
-            <p class="section-sub">Subscribe to products for <strong>{{ ws.name }}</strong>.</p>
+            <h2>Your Subscriptions</h2>
+            <p class="section-sub">Active plans for <strong>{{ ws.name }}</strong>.</p>
           </div>
         </div>
 
         <div class="card">
-          <div v-if="prodLoading" class="profile-skeleton">
-            <div class="skeleton-row" style="height:72px"></div>
-            <div class="skeleton-row" style="height:72px"></div>
-            <div class="skeleton-row" style="height:72px"></div>
+          <!-- loading -->
+          <div v-if="prodLoading || subLoading" class="profile-skeleton">
+            <div class="skeleton-row" style="height:56px"></div>
+            <div class="skeleton-row" style="height:56px"></div>
+            <div class="skeleton-row" style="height:56px"></div>
           </div>
-          <div v-else-if="prodError" class="alert alert-error">{{ prodError }}</div>
-          <div v-else-if="products.length === 0" class="sub-empty">
-            <p class="sub-empty-title">No products configured.</p>
-          </div>
+
+          <!-- error -->
+          <div v-else-if="prodError || subError" class="alert alert-error">{{ prodError || subError }}</div>
+
+          <!-- product rows -->
           <template v-else>
-            <div class="prod-list">
-              <div v-for="prod in products" :key="prod.id" class="prod-row">
-                <!-- icon -->
-                <div class="prod-icon" :data-name="prod.name">{{ prodInitial(prod.name) }}</div>
+            <!-- cancel feedback -->
+            <div v-if="cancelSuccess" class="alert alert-success" style="margin-bottom:1rem">{{ cancelSuccess }}</div>
+            <div v-if="cancelError"   class="alert alert-error"   style="margin-bottom:1rem">{{ cancelError }}</div>
 
-                <!-- info -->
-                <div class="prod-info">
-                  <div class="prod-name">{{ formatProductName(prod.name) }}</div>
-                  <div class="prod-desc">{{ prod.description || 'No description.' }}</div>
+            <div class="subs-grid">
+              <div v-for="prod in products" :key="prod.id" class="subs-row">
+
+                <!-- product identity -->
+                <div class="subs-prod">
+                  <div class="subs-icon" :data-name="prod.name">{{ prodInitial(prod.name) }}</div>
+                  <div class="subs-prod-info">
+                    <div class="subs-prod-name">{{ formatProductName(prod.name) }}</div>
+                    <div class="subs-prod-desc">{{ prod.description || '' }}</div>
+                  </div>
                 </div>
 
-                <!-- status / action -->
-                <div class="prod-action">
-                  <template v-if="activeSubFor(prod.id)">
-                    <span class="sub-badge active">✓ Active</span>
-                    <div class="prod-renew">
-                      Renews {{ formatDate(activeSubFor(prod.id).current_period_end) }}
-                    </div>
-                  </template>
-                  <template v-else-if="ws.my_role === 'owner' && prod.stripe_price_id">
-                    <button
-                      class="btn-subscribe"
-                      :disabled="checkoutLoading === prod.id"
-                      @click="doCheckout(prod)"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                      {{ checkoutLoading === prod.id ? 'Redirecting…' : 'Subscribe' }}
+                <!-- plan + status -->
+                <template v-if="activeSubFor(prod.id)">
+                  <div class="subs-plan">{{ activeSubFor(prod.id).plan_name }}</div>
+                  <div class="subs-status">
+                    <span class="sub-badge active">\u2713 Active</span>
+                    <span class="subs-until">until {{ formatDate(activeSubFor(prod.id).current_period_end) }}</span>
+                  </div>
+                  <div class="subs-actions">
+                    <button class="subs-btn-manage" @click="openPortal" :disabled="portalLoading">
+                      {{ portalLoading ? 'Opening\u2026' : 'Manage billing' }}
                     </button>
-                  </template>
-                  <template v-else-if="ws.my_role !== 'owner'">
-                    <span class="prod-no-sub">Not subscribed</span>
-                  </template>
-                  <template v-else>
-                    <!-- owner, no price_id: product not yet priced -->
-                    <span class="prod-no-price">Price not configured</span>
-                  </template>
-                </div>
+                    <button
+                      v-if="ws.my_role === 'owner'"
+                      class="subs-btn-cancel"
+                      :disabled="cancelLoading === activeSubFor(prod.id).id"
+                      @click="doCancel(activeSubFor(prod.id))"
+                    >
+                      {{ cancelLoading === activeSubFor(prod.id).id ? 'Canceling\u2026' : 'Cancel' }}
+                    </button>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <div class="subs-plan subs-plan-none">\u2014</div>
+                  <div class="subs-status">
+                    <span class="sub-badge">Not subscribed</span>
+                  </div>
+                  <div class="subs-actions">
+                    <a
+                      v-if="productHomeURL(prod)"
+                      :href="productHomeURL(prod)"
+                      target="_blank"
+                      rel="noopener"
+                      class="subs-btn-goto"
+                    >
+                      Go to {{ formatProductName(prod.name) }}
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </a>
+                  </div>
+                </template>
+
               </div>
             </div>
-            <div v-if="checkoutError" class="alert alert-error" style="margin-top:1rem;">{{ checkoutError }}</div>
+
+            <div v-if="products.length === 0" class="sub-empty">
+              <p class="sub-empty-title">No products configured.</p>
+            </div>
           </template>
         </div>
       </section>
 
-      <!-- ── Billing ──────────────────────────────────────────── -->
-      <section v-if="ws" class="section">
+      <!-- \u2500\u2500 Billing (portal + sync) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 -->
+      <section v-if="ws && billing?.has_stripe_customer" class="section">
         <div class="section-head">
           <div class="section-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -128,165 +154,37 @@
           </div>
           <div>
             <h2>Billing</h2>
-            <p class="section-sub">Stripe payments for <strong>{{ ws.name }}</strong>.</p>
+            <p class="section-sub">Stripe account for <strong>{{ ws.name }}</strong>.</p>
           </div>
         </div>
 
         <div class="card">
-
-          <!-- Loading -->
-          <template v-if="billingLoading">
-            <div class="skel-line" style="width:40%;margin-bottom:.75rem;"></div>
-            <div class="skel-line" style="width:60%;margin-bottom:.5rem;"></div>
-            <div class="skel-line" style="width:50%;margin-bottom:.5rem;"></div>
-          </template>
-
-          <!-- Error -->
-          <div v-else-if="billingError" class="alert alert-error">{{ billingError }}</div>
-
-          <!-- No Stripe customer yet -->
-          <div v-else-if="!billing?.has_stripe_customer" class="billing-empty">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-              <line x1="1" y1="10" x2="23" y2="10"/>
-            </svg>
-            <div>
-              <p class="billing-empty-title">No active subscriptions</p>
-              <p class="billing-empty-sub">
-                This workspace has no billing history yet. Once a subscription is activated,
-                your plan, renewal date, and payment details will appear here.
-              </p>
-            </div>
+          <div class="billing-status-row">
+            <span class="sub-badge active">\u2713 Billing active</span>
+            <code class="billing-cus-id">{{ billing?.stripe_customer_id }}</code>
           </div>
-
-          <!-- Has Stripe customer -->
-          <template v-else>
-            <div class="billing-status-row">
-              <span class="sub-badge active">✓ Billing active</span>
-              <code class="billing-cus-id">{{ billing?.stripe_customer_id }}</code>
-            </div>
-
-            <div class="billing-actions">
-              <button class="billing-btn" @click="openPortal" :disabled="portalLoading">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-                {{ portalLoading ? 'Opening…' : 'Manage billing' }}
-              </button>
-              <button class="billing-btn billing-btn-ghost" @click="doSyncBilling()" :disabled="syncLoading">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="23 4 23 10 17 10"/>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                </svg>
-                {{ syncLoading ? 'Syncing…' : 'Refresh from Stripe' }}
-              </button>
-            </div>
-
-            <div v-if="portalError" class="alert alert-error" style="margin-top:.75rem;">{{ portalError }}</div>
-            <div v-if="syncMsg" class="billing-sync-msg">{{ syncMsg }}</div>
-
-            <!-- Active subscriptions from Stripe -->
-            <template v-if="billing?.subscriptions?.length">
-              <div class="billing-subs-label">Active subscriptions</div>
-              <div class="billing-sub-list">
-                <div v-for="sub in billing.subscriptions" :key="sub.id" class="billing-sub-row">
-                  <div class="billing-sub-icon">{{ (sub.product?.name ?? 'P')[0].toUpperCase() }}</div>
-                  <div class="billing-sub-info">
-                    <div class="billing-sub-product">{{ formatProductName(sub.product?.name) }}</div>
-                    <div class="billing-sub-plan">{{ sub.plan_name }}</div>
-                  </div>
-                  <div class="billing-sub-meta">
-                    <span class="sub-badge" :class="sub.status">{{ subStatusLabel(sub.status) }}</span>
-                    <div v-if="sub.status === 'active'" class="billing-sub-renew">
-                      Renews {{ formatDate(sub.current_period_end) }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </template>
-            <div v-else class="billing-no-subs">No active subscriptions on this workspace.</div>
-          </template>
+          <div class="billing-actions">
+            <button class="billing-btn" @click="openPortal" :disabled="portalLoading">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              {{ portalLoading ? 'Opening\u2026' : 'Manage billing' }}
+            </button>
+            <button class="billing-btn billing-btn-ghost" @click="doSyncBilling()" :disabled="syncLoading">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              {{ syncLoading ? 'Syncing\u2026' : 'Refresh from Stripe' }}
+            </button>
+          </div>
+          <div v-if="portalError" class="alert alert-error" style="margin-top:.75rem;">{{ portalError }}</div>
+          <div v-if="syncMsg" class="billing-sync-msg">{{ syncMsg }}</div>
         </div>
       </section>
-
-      <!-- ── Subscriptions ────────────────────────────────────── -->
-      <section v-if="ws" class="section">
-        <div class="section-head">
-          <div class="section-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-            </svg>
-          </div>
-          <div>
-            <h2>Subscriptions</h2>
-            <p class="section-sub">Active plans for <strong>{{ ws.name }}</strong>.</p>
-          </div>
-        </div>
-
-        <div class="card">
-
-          <!-- loading -->
-          <div v-if="subLoading" class="profile-skeleton">
-            <div class="skeleton-row" style="height:52px"></div>
-            <div class="skeleton-row" style="height:52px"></div>
-          </div>
-
-          <!-- error -->
-          <div v-else-if="subError" class="alert alert-error">{{ subError }}</div>
-
-          <!-- cancel feedback -->
-          <div v-if="cancelSuccess" class="alert alert-success">{{ cancelSuccess }}</div>
-          <div v-if="cancelError"   class="alert alert-error">{{ cancelError }}</div>
-
-          <!-- empty -->
-          <div v-if="!subLoading && !subError && subscriptions.length === 0" class="sub-empty">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-            </svg>
-            <div>
-              <p class="sub-empty-title">No subscriptions</p>
-              <p class="sub-empty-sub">This workspace has no subscriptions yet.</p>
-            </div>
-          </div>
-
-          <!-- list -->
-          <div v-else-if="!subLoading" class="sub-list">
-            <div v-for="sub in subscriptions" :key="sub.id" class="sub-row">
-              <div class="sub-icon">{{ (sub.product?.name ?? 'P')[0].toUpperCase() }}</div>
-              <div class="sub-info">
-                <div class="sub-product">{{ formatProductName(sub.product?.name) }}</div>
-                <div class="sub-plan">{{ sub.plan_name }}</div>
-              </div>
-              <div class="sub-meta">
-                <span class="sub-badge" :class="sub.status">{{ subStatusLabel(sub.status) }}</span>
-                <div v-if="sub.status === 'active'" class="sub-expiry">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                  Renews {{ formatDate(sub.current_period_end) }}
-                </div>
-              </div>
-              <button
-                v-if="sub.status === 'active' && ws.my_role === 'owner'"
-                class="cancel-btn"
-                :disabled="cancelLoading === sub.id"
-                @click="doCancel(sub)"
-              >
-                {{ cancelLoading === sub.id ? 'Canceling…' : 'Cancel' }}
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
     </div>
   </div>
 </template>
@@ -322,17 +220,16 @@ onMounted(async () => {
 })
 
 async function switchWorkspace(id) {
-  activeWsId.value = id
-  billing.value    = null
-  billingError.value = ''
+  activeWsId.value    = id
+  billing.value       = null
+  billingError.value  = ''
   subscriptions.value = []
   cancelError.value   = ''
   cancelSuccess.value = ''
-  checkoutError.value = ''
   try {
     const { data } = await authAPI.getWorkspace(id)
     ws.value = data.workspace
-    // Auto-sync when returning from Stripe Checkout success
+    // Auto-sync when returning from a product's Stripe checkout success
     if (route.query.billing === 'success' && ws.value?.my_role === 'owner') {
       await doSyncBilling(id)
     }
@@ -344,14 +241,11 @@ async function switchWorkspace(id) {
 }
 
 // ── Products ───────────────────────────────────────────────────────────────────
-const products       = ref([])
-const prodLoading    = ref(false)
-const prodError      = ref('')
-const checkoutLoading = ref('')
-const checkoutError  = ref('')
+const products    = ref([])
+const prodLoading = ref(false)
+const prodError   = ref('')
 
 onMounted(async () => {
-  // Load products list once (same for all workspaces)
   prodLoading.value = true
   try {
     const { data } = await authAPI.listProducts()
@@ -370,28 +264,14 @@ function activeSubFor(productId) {
   ) ?? null
 }
 
-async function doCheckout(prod) {
-  checkoutLoading.value = prod.id
-  checkoutError.value   = ''
-  try {
-    const { data } = await authAPI.createCheckoutSession(ws.value.id, {
-      price_id:    prod.stripe_price_id,
-      product_id:  prod.id,
-      plan_name:   'standard',
-      success_url: window.location.origin + '/billing?billing=success',
-      cancel_url:  window.location.origin + '/billing?billing=canceled',
-    })
-    // Redirect to Stripe Checkout
-    window.location.href = data.url
-  } catch (err) {
-    checkoutError.value   = err.response?.data?.error ?? 'Failed to start checkout. Try again.'
-    checkoutLoading.value = ''
-  }
+// Returns the product's home URL (first redirect_url) for the "Go to Product" link
+function productHomeURL(prod) {
+  return prod.redirect_urls?.[0] ?? null
 }
 
 // ── Billing ────────────────────────────────────────────────────────────────────
 const billing        = ref(null)
-const billingLoading = ref(true)
+const billingLoading = ref(false)
 const billingError   = ref('')
 const portalLoading  = ref(false)
 const portalError    = ref('')
@@ -696,10 +576,19 @@ function subStatusLabel(status) {
 .cancel-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Products & Plans ───────────────────────────────────────────────────── */
-.prod-list { display: flex; flex-direction: column; gap: 0; }
+.prod-list  { display: flex; flex-direction: column; gap: 0; }
+.prod-entry { border-bottom: 1px solid var(--border, #dadce0); }
+.prod-entry:last-child { border-bottom: none; }
+
+.prod-pricing-table-wrap {
+  padding: 1rem 0 1.5rem;
+  /* Reset Stripe's internal overflow so it expands naturally */
+  overflow: visible;
+}
+stripe-pricing-table { display: block; width: 100%; }
 .prod-row {
   display: flex; align-items: center; gap: 14px;
-  padding: 14px 0; border-bottom: 1px solid var(--border, #dadce0);
+  padding: 14px 0;
 }
 .prod-row:last-child { border-bottom: none; }
 
@@ -732,4 +621,186 @@ function subStatusLabel(status) {
 }
 .btn-subscribe:hover:not(:disabled) { background: #1557b0; }
 .btn-subscribe:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Pricing Cards (email-warmup) ───────────────────────────────────────── */
+.prod-entry-plans { border-bottom: none; padding-bottom: 1.5rem; }
+
+.pc-head {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 1rem; padding: 1.75rem 0 1rem; text-align: center;
+}
+.pc-title { font-size: 1.1rem; font-weight: 700; color: var(--text, #202124); }
+
+.pc-toggle {
+  display: inline-flex; align-items: center;
+  background: var(--bg, #f1f3f4); border-radius: 100px;
+  padding: 3px; gap: 2px;
+}
+.pc-tgl {
+  height: 30px; padding: 0 14px; border-radius: 100px;
+  border: none; background: transparent;
+  font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #5f6368);
+  cursor: pointer; transition: all .15s; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.pc-tgl.active { background: #fff; color: var(--text, #202124); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.pc-save { font-size: 0.72rem; color: var(--blue, #1a73e8); font-weight: 700; }
+
+.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 0.25rem 0 1.25rem;
+}
+@media (max-width: 720px) { .pc-grid { grid-template-columns: 1fr; } }
+@media (max-width: 960px) and (min-width: 721px) { .pc-grid { grid-template-columns: 1fr 1fr; } }
+
+.pc-card {
+  position: relative;
+  border: 1.5px solid var(--border, #dadce0);
+  border-radius: 14px;
+  padding: 1.5rem 1.25rem;
+  background: #fff;
+  display: flex; flex-direction: column; gap: 0;
+  transition: box-shadow .18s;
+}
+.pc-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+.pc-card.popular {
+  border-color: var(--text, #202124);
+  box-shadow: 0 2px 12px rgba(0,0,0,.1);
+}
+
+.pc-badge {
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  background: var(--text, #202124); color: #fff;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: .04em;
+  padding: 3px 12px; border-radius: 100px; white-space: nowrap;
+}
+
+.pc-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--bg, #f1f3f4);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 12px; color: var(--text, #202124);
+}
+.pc-card.popular .pc-icon { background: #f0f4ff; color: var(--blue, #1a73e8); }
+
+.pc-name    { font-size: 1rem; font-weight: 700; color: var(--text, #202124); margin-bottom: 3px; }
+.pc-tagline { font-size: 0.78rem; color: var(--text-muted, #5f6368); margin-bottom: 1.1rem; line-height: 1.45; }
+
+.pc-price {
+  margin-bottom: 1.1rem;
+}
+.pc-amount {
+  font-size: 2rem; font-weight: 800; color: var(--text, #202124);
+  letter-spacing: -.02em;
+}
+.pc-unit-wrap { display: flex; flex-direction: column; margin-top: 1px; }
+.pc-unit      { font-size: 0.72rem; color: var(--text-muted, #5f6368); font-weight: 600; }
+.pc-note      { font-size: 0.7rem; color: var(--text-muted, #5f6368); margin-top: 1px; }
+.pc-contact-price { font-size: 1.6rem; font-weight: 800; color: var(--text, #202124); }
+.pc-contact-note  { font-size: 0.72rem; color: var(--text-muted, #5f6368); margin-top: 2px; }
+
+.pc-cta {
+  width: 100%; height: 40px; border-radius: 8px;
+  border: 1.5px solid var(--border, #dadce0);
+  background: #fff; color: var(--text, #202124);
+  font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  transition: all .15s; font-family: inherit;
+  margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+}
+.pc-cta:hover:not(:disabled) { background: var(--bg, #f1f3f4); }
+.pc-cta:disabled { opacity: 0.5; cursor: not-allowed; }
+.pc-cta.primary {
+  background: var(--text, #202124); color: #fff; border-color: var(--text, #202124);
+}
+.pc-cta.primary:hover:not(:disabled) { background: #333; border-color: #333; }
+.pc-cta-outline { border-color: var(--border, #dadce0); color: var(--text, #202124); }
+
+.pc-features {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pc-features li {
+  display: flex; align-items: flex-start; gap: 7px;
+  font-size: 0.8rem; color: var(--text-muted, #5f6368); line-height: 1.45;
+}
+.pc-features li.pc-feat-heading {
+  font-size: 0.8rem; font-weight: 700; color: var(--text, #202124);
+  margin-top: 2px; display: block;
+}
+.pc-check { flex-shrink: 0; margin-top: 1px; color: var(--text-muted, #5f6368); }
+.pc-card.popular .pc-check { color: var(--blue, #1a73e8); }
+
+/* ── Your Subscriptions grid ──────────────────────────────────────────────── */
+.subs-grid { display: flex; flex-direction: column; gap: 0; }
+.subs-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 160px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border, #dadce0);
+}
+.subs-row:last-child { border-bottom: none; }
+@media (max-width: 640px) {
+  .subs-row { grid-template-columns: 1fr; gap: 8px; }
+}
+
+.subs-prod { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.subs-icon {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  background: var(--blue-light, #e8f0fe); color: var(--blue, #1a73e8);
+  font-size: 15px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.subs-prod-info { min-width: 0; }
+.subs-prod-name {
+  font-size: 0.875rem; font-weight: 700; color: var(--text, #202124);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.subs-prod-desc {
+  font-size: 0.75rem; color: var(--text-muted, #5f6368); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.subs-plan      { font-size: 0.78rem; font-weight: 600; color: var(--text, #202124); text-transform: capitalize; }
+.subs-plan-none { color: var(--text-muted, #5f6368); font-weight: 400; }
+
+.subs-status { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.subs-until  { font-size: 0.72rem; color: var(--text-muted, #5f6368); }
+
+.subs-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.subs-btn-manage {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 30px; padding: 0 12px; border-radius: 7px;
+  background: var(--blue, #1a73e8); color: #fff; border: none;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  transition: background .15s; font-family: inherit;
+}
+.subs-btn-manage:hover:not(:disabled) { background: #1557b0; }
+.subs-btn-manage:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.subs-btn-cancel {
+  height: 30px; padding: 0 12px; border-radius: 7px;
+  background: none; color: #c5221f; font-weight: 600;
+  font-size: 0.78rem; border: 1.5px solid #f5c6c4; cursor: pointer;
+  transition: background .15s; font-family: inherit;
+}
+.subs-btn-cancel:hover:not(:disabled) { background: #fce8e6; }
+.subs-btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.subs-btn-goto {
+  display: inline-flex; align-items: center;
+  height: 30px; padding: 0 12px; border-radius: 7px;
+  background: var(--bg, #f1f3f4); color: var(--text, #202124);
+  border: 1.5px solid var(--border, #dadce0);
+  font-size: 0.78rem; font-weight: 600; text-decoration: none;
+  transition: all .15s; white-space: nowrap;
+}
+.subs-btn-goto:hover {
+  background: #e8f0fe; border-color: var(--blue, #1a73e8); color: var(--blue, #1a73e8);
+}
 </style>

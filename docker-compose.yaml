@@ -37,7 +37,7 @@ services:
       APP_ENV:                ${APP_ENV:-production}
       JWT_SECRET:             ${JWT_SECRET:-gour-jwt-production-secret-change-me}
       JWT_ISSUER:             ${JWT_ISSUER:-accounts.gour.io}
-      JWT_AUDIENCE:           ${JWT_AUDIENCE:-reach}
+      JWT_AUDIENCE:           ${JWT_AUDIENCE:-accounts.gour.io}
       JWT_PRIVATE_KEY:        ${JWT_PRIVATE_KEY:-}
       JWT_PUBLIC_KEY:         ${JWT_PUBLIC_KEY:-}
       JWKS_URL:               ${JWKS_URL:-}
@@ -52,6 +52,8 @@ services:
 
       # ── Admin ─────────────────────────────────────────────────────
       ADMIN_SECRET:           ${ADMIN_SECRET:-gour-admin-secret-change-me}
+      ADMIN_EMAIL:            ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD:         ${ADMIN_PASSWORD:-}
 
       # ── Email (SMTP — ZeptoMail) ─────────────────────────────────
       SMTP_HOST:              ${SMTP_HOST:-smtp.zeptomail.in}
@@ -89,8 +91,8 @@ services:
       backend:
         condition: service_healthy
     environment:
-      - SERVICE_FQDN_FRONTEND=https://accounts.gour.io
-      - BACKEND_URL=http://backend:8080
+      - SERVICE_FQDN_FRONTEND=${SERVICE_FQDN_FRONTEND:-https://accounts.gour.io}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:8080}
     labels:
       - traefik.enable=true
       - traefik.http.services.frontend.loadbalancer.server.port=80

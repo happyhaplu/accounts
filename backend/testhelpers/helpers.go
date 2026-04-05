@@ -65,13 +65,14 @@ return app
 }
 
 // MakeJWT issues a signed JWT for testing.
+// iss/aud must match config defaults (accounts.gour.io) so Protected() accepts the token.
 func MakeJWT(userID, email string) string {
 claims := jwt.MapClaims{
 "sub":   userID,
 "email": email,
 "role":  "user",
 "iss":   "accounts.gour.io",
-"aud":   "reach",
+"aud":   "accounts.gour.io",
 "exp":   time.Now().Add(24 * time.Hour).Unix(),
 "iat":   time.Now().Unix(),
 }
@@ -98,6 +99,9 @@ return user, MakeJWT(user.ID.String(), email)
 
 // AuthBearer returns the full Authorization header value.
 func AuthBearer(token string) string { return "Bearer " + token }
+
+// AdminSecret is the secret set by SetupTestDB for admin routes.
+const AdminSecret = "test-admin-secret"
 
 // UseProtected re-exports middleware.Protected for test packages.
 var UseProtected = middleware.Protected

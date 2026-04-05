@@ -13,7 +13,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	stripe "github.com/stripe/stripe-go/v76"
-	checkoutsession "github.com/stripe/stripe-go/v76/checkout/session"
 	portalsession "github.com/stripe/stripe-go/v76/billingportal/session"
 	stripecustomer "github.com/stripe/stripe-go/v76/customer"
 	stripesubscription "github.com/stripe/stripe-go/v76/subscription"
@@ -67,83 +66,6 @@ func GetBillingStatus(c *fiber.Ctx) error {
 		"stripe_customer_id":  func() string { if hasCustomer { return bc.StripeCustomerID }; return "" }(),
 		"subscriptions":       subs,
 	})
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/v1/workspaces/:id/billing/checkout  (owner only)
-// Creates a Stripe Checkout session and returns the URL.
-// Body: { "price_id", "product_id", "plan_name", "success_url"?, "cancel_url"? }
-// ─────────────────────────────────────────────────────────────────────────────
-
-func CreateCheckoutSession(c *fiber.Ctx) error {
-	if !stripeReady(c) {
-		return nil
-	}
-	uid, _ := uuid.Parse(c.Locals("userID").(string))
-	wsID, err := uuid.Parse(c.Params("id"))
-	if err != nil {
-		return badRequest(c, "Invalid workspace ID")
-	}
-	if !isWorkspaceOwner(uid, wsID) {
-		return c.Status(fiber.StatusForbidden).JSON(errJSON("Only workspace owners can manage billing"))
-	}
-
-	type body struct {
-		PriceID    string `json:"price_id"`
-		ProductID  string `json:"product_id"`
-		PlanName   string `json:"plan_name"`
-		SuccessURL string `json:"success_url"`
-		CancelURL  string `json:"cancel_url"`
-	}
-	req := new(body)
-	if err := c.BodyParser(req); err != nil {
-		return badRequest(c, "Invalid request body")
-	}
-	if req.PriceID == "" {
-		return badRequest(c, "price_id is required")
-	}
-	if req.PlanName == "" {
-		return badRequest(c, "plan_name is required")
-	}
-
-	appURL := os.Getenv("APP_URL")
-	if req.SuccessURL == "" {
-		req.SuccessURL = appURL + "/settings?billing=success"
-	}
-	if req.CancelURL == "" {
-		req.CancelURL = appURL + "/settings?billing=canceled"
-	}
-
-	// Get or create workspace billing customer.
-	stripeCustomerID, err := getOrCreateStripeCustomer(wsID, uid)
-	if err != nil {
-		return serverError(c, "Failed to set up billing customer")
-	}
-
-	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
-
-	params := &stripe.CheckoutSessionParams{
-		Customer:   stripe.String(stripeCustomerID),
-		Mode:       stripe.String(string(stripe.CheckoutSessionModeSubscription)),
-		SuccessURL: stripe.String(req.SuccessURL),
-		CancelURL:  stripe.String(req.CancelURL),
-		LineItems: []*stripe.CheckoutSessionLineItemParams{
-			{Price: stripe.String(req.PriceID), Quantity: stripe.Int64(1)},
-		},
-		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
-			Metadata: map[string]string{
-				"workspace_id": wsID.String(),
-				"product_id":  req.ProductID,
-				"plan_name":   req.PlanName,
-			},
-		},
-	}
-	sess, err := checkoutsession.New(params)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[billing] checkout session error: %v\n", err)
-		return serverError(c, "Failed to create checkout session")
-	}
-	return c.JSON(fiber.Map{"url": sess.URL})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -430,7 +352,7 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 			fmt.Fprintf(os.Stderr, "[webhook] parse subscription.updated: %v\n", err)
 			break
 		}
-		webhookSyncSubscription(&sub)
+		webhookSyncSubscription(&sub, "")
 
 	case "customer.subscription.deleted":
 		var sub stripe.Subscription
@@ -459,6 +381,7 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 
 // webhookCheckoutCompleted is called after a successful Stripe Checkout.
 // It fetches the subscription from Stripe and provisions it in our DB.
+// Products own checkout/pricing; Accounts only syncs access data from Stripe metadata.
 func webhookCheckoutCompleted(session *stripe.CheckoutSession) {
 	if session.Subscription == nil {
 		// Payment-mode (one-time charge) — no subscription object created.
@@ -466,28 +389,43 @@ func webhookCheckoutCompleted(session *stripe.CheckoutSession) {
 		return
 	}
 
-	// Fetch the full subscription to get metadata + period details.
+	// Fetch the full subscription to get metadata + period details + line items.
 	sub, err := stripesubscription.Get(session.Subscription.ID, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[webhook] fetch subscription %s: %v\n", session.Subscription.ID, err)
 		return
 	}
-	webhookSyncSubscription(sub)
+	// Pass ClientReferenceID as fallback workspace_id for Pricing Table checkouts.
+	webhookSyncSubscription(sub, session.ClientReferenceID)
 }
 
 // webhookSyncSubscription upserts a Subscription row from a Stripe Subscription object.
-func webhookSyncSubscription(s *stripe.Subscription) {
+//
+// clientRefID is the checkout session's ClientReferenceID (= workspace_id) set by the
+// product's own Stripe Pricing Table or checkout. Pass "" when calling from
+// subscription.updated events.
+//
+// Products must include these in their Stripe checkout session metadata:
+//   metadata.workspace_id  — Accounts workspace UUID
+//   metadata.product_id    — Accounts product UUID
+//   metadata.plan_name     — human-readable plan tier (e.g. "starter", "pro")
+func webhookSyncSubscription(s *stripe.Subscription, clientRefID string) {
 	ssID      := s.ID
 	status    := stripeStatusToOurs(string(s.Status))
 	periodEnd := time.Unix(s.CurrentPeriodEnd, 0)
 	planName  := s.Metadata["plan_name"]
-	if planName == "" {
-		planName = "standard"
-	}
 	prodIDStr := s.Metadata["product_id"]
 	wsIDStr   := s.Metadata["workspace_id"]
 
-	// Update an existing row if we already have it.
+	// Fallback: workspace_id from Stripe Pricing Table's client_reference_id.
+	if wsIDStr == "" && clientRefID != "" {
+		wsIDStr = clientRefID
+	}
+	if planName == "" {
+		planName = "standard"
+	}
+
+	// ── Update an existing row if we already have it ───────────────────────────
 	var existing models.Subscription
 	if database.DB.Where("stripe_subscription_id = ?", ssID).First(&existing).Error == nil {
 		database.DB.Model(&existing).Updates(map[string]interface{}{

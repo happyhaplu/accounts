@@ -1,7 +1,7 @@
 <template>
   <div id="app">
-    <!-- Top navbar — only for authenticated pages -->
-    <nav v-if="auth.isAuthenticated" class="top-nav">
+    <!-- Top navbar — only for authenticated user pages (not admin) -->
+    <nav v-if="auth.isAuthenticated && !isAdminRoute" class="top-nav">
       <div class="nav-left">
         <img src="/logo.svg" alt="Gour" class="nav-logo-img" />
         <span class="nav-section">Accounts</span>
@@ -129,12 +129,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAuthStore } from './stores/auth'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const auth        = useAuthStore()
 const router      = useRouter()
+const route       = useRoute()
 const menuOpen    = ref(false)
 const appsOpen    = ref(false)
+
+const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
 const apps = [
   { name: 'Email Warmup', short: 'EW', gradient: 'linear-gradient(135deg,#ea4335,#fb8c00)', shadow: 'rgba(234,67,53,0.35)', url: '/products/email-warmup/launch', status: 'Active' },

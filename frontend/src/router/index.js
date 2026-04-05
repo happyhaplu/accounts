@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useAdminStore } from '../stores/admin'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -85,6 +86,40 @@ const routes = [
     name: 'InviteAccept',
     component: () => import('../views/InviteAcceptView.vue'),
   },
+
+  // ── Admin panel ────────────────────────────────────────────────────────────
+  // Separate auth system (X-Admin-Secret) — completely independent of user JWT.
+  {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('../views/admin/AdminLoginView.vue'),
+    meta: { adminGuest: true },
+  },
+  {
+    path: '/admin',
+    component: () => import('../layouts/AdminLayout.vue'),
+    children: [
+      { path: '', redirect: '/admin/products' },
+      {
+        path: 'products',
+        name: 'AdminProducts',
+        component: () => import('../views/admin/AdminProductsView.vue'),
+        meta: { adminAuth: true },
+      },
+      {
+        path: 'users',
+        name: 'AdminUsers',
+        component: () => import('../views/admin/AdminUsersView.vue'),
+        meta: { adminAuth: true },
+      },
+      {
+        path: 'workspaces',
+        name: 'AdminWorkspaces',
+        component: () => import('../views/admin/AdminWorkspacesView.vue'),
+        meta: { adminAuth: true },
+      },
+    ],
+  },
 ]
 
 const router = createRouter({
@@ -93,8 +128,18 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const auth = useAuthStore()
+  const auth  = useAuthStore()
+  const admin = useAdminStore()
 
+  // ── Admin guards ───────────────────────────────────────────────
+  if (to.meta.adminAuth && !admin.isAuthenticated) {
+    return { path: '/admin/login' }
+  }
+  if (to.meta.adminGuest && admin.isAuthenticated) {
+    return { path: '/admin/products' }
+  }
+
+  // ── User guards ────────────────────────────────────────────────
   // Auth-required route — must be logged in
   if (to.meta.auth && !auth.isAuthenticated) {
     return { name: 'Login' }

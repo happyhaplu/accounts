@@ -82,9 +82,65 @@ export const authAPI = {
 
   // Billing (Stripe)
   getBillingStatus:       (wsId)       => api.get(`/workspaces/${wsId}/billing`),
-  createCheckoutSession:  (wsId, data) => api.post(`/workspaces/${wsId}/billing/checkout`, data),
   createPortalSession:    (wsId, data) => api.post(`/workspaces/${wsId}/billing/portal`, data),
   syncBilling:            (wsId)       => api.post(`/workspaces/${wsId}/billing/sync`),
+
+  // Public config
+  getConfig: () => api.get('/config'),
 }
 
 export default api
+
+// ── Admin API ────────────────────────────────────────────────────────────────
+// Separate axios instance that automatically injects X-Admin-Secret header
+// from sessionStorage. On 403 it clears the session and redirects to login.
+
+const adminAxios = axios.create({ baseURL: '/api/v1' })
+
+adminAxios.interceptors.request.use((config) => {
+  const secret = sessionStorage.getItem('admin_secret')
+  if (secret) config.headers['X-Admin-Secret'] = secret
+  config.headers['Content-Type'] = 'application/json'
+  return config
+})
+
+adminAxios.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 403 || err.response?.status === 401) {
+      // Session expired or secret invalid — force re-login
+      sessionStorage.removeItem('admin_secret')
+      sessionStorage.removeItem('admin_email')
+      if (!window.location.pathname.startsWith('/admin/login')) {
+        window.location.href = '/admin/login'
+      }
+    }
+    return Promise.reject(err)
+  },
+)
+
+export const adminAPI = {
+  // Auth (public — no X-Admin-Secret needed)
+  login: (data) => api.post('/admin/auth/login', data),
+
+  // Products
+  listProducts:           ()         => adminAxios.get('/admin/products'),
+  createProduct:          (data)     => adminAxios.post('/admin/products', data),
+  updateProduct:          (id, data) => adminAxios.patch(`/admin/products/${id}`, data),
+  deactivateProduct:      (id)       => adminAxios.delete(`/admin/products/${id}`),
+  permanentDeleteProduct: (id)       => adminAxios.delete(`/admin/products/${id}/permanent`),
+  regenerateProductKey:   (id)       => adminAxios.post(`/admin/products/${id}/regenerate-key`),
+
+  // Users
+  listUsers:             (params) => adminAxios.get('/admin/users',                  { params }),
+  purgeUnverifiedUsers:  ()       => adminAxios.delete('/admin/users/purge-unverified'),
+
+  // Workspaces
+  listWorkspaces: (params) => adminAxios.get('/admin/workspaces', { params }),
+
+  // Subscriptions (read-only for now)
+  listSubscriptions: (params)   => adminAxios.get('/admin/subscriptions', { params }),
+
+  // Billing overview
+  billingOverview: () => adminAxios.get('/admin/billing'),
+}

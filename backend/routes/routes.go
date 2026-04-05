@@ -32,6 +32,9 @@ func Setup(app *fiber.App) {
 		})
 	})
 
+	// ── Public config (Stripe publishable key etc.) ───────────────
+	api.Get("/config", handlers.GetConfig)
+
 	// ── Public auth routes ────────────────────────────────────────
 	auth := api.Group("/auth")
 	auth.Post("/register",              handlers.Register)
@@ -48,16 +51,24 @@ func Setup(app *fiber.App) {
 	// ── Public invite preview ─────────────────────────────────────
 	api.Get("/invites/preview", handlers.PreviewInvite)
 
+	// ── Admin login (public — no secret needed to call this) ──────
+	api.Post("/admin/auth/login", handlers.AdminLogin)
+
 	// ── Admin routes (X-Admin-Secret only, no JWT) ────────────────
 	// Uses its own distinct prefix "/admin" so its USE middleware does
 	// NOT overlap with any user-facing prefix below.
 	admin := api.Group("/admin", middleware.AdminOnly())
-	admin.Get("/products",        handlers.AdminListProducts)
-	admin.Post("/products",       handlers.CreateProduct)
-	admin.Patch("/products/:id",  handlers.UpdateProduct)
-	admin.Delete("/products/:id", handlers.DeactivateProduct)
-	admin.Get("/subscriptions",   handlers.AdminListSubscriptions)
-	admin.Get("/billing",         handlers.AdminBillingOverview)
+	admin.Get("/products",                    handlers.AdminListProducts)
+	admin.Post("/products",                   handlers.CreateProduct)
+	admin.Patch("/products/:id",              handlers.UpdateProduct)
+	admin.Delete("/products/:id",             handlers.DeactivateProduct)
+	admin.Delete("/products/:id/permanent",   handlers.PermanentDeleteProduct)
+	admin.Post("/products/:id/regenerate-key", handlers.RegenerateProductAPIKey)
+	admin.Get("/subscriptions",               handlers.AdminListSubscriptions)
+	admin.Get("/billing",                     handlers.AdminBillingOverview)
+	admin.Get("/users",                       handlers.AdminListUsers)
+	admin.Delete("/users/purge-unverified",   handlers.AdminPurgeUnverifiedUsers)
+	admin.Get("/workspaces",                  handlers.AdminListWorkspaces)
 
 	// ── Protected: profile ────────────────────────────────────────
 	// Inline middleware so we avoid a catch-all USE handler.
@@ -72,6 +83,8 @@ func Setup(app *fiber.App) {
 	// Product launch & subscription check (for external Gour apps)
 	api.Get("/products/:name/launch", p, handlers.LaunchProduct)
 	api.Get("/products/:name/check",     handlers.CheckProductSubscription)
+	// Server-to-server token verification (X-API-Key, no JWT needed)
+	api.Post("/products/verify",         handlers.VerifyToken)
 	// Accept invite (user must be logged in)
 	api.Post("/invites/accept", p, handlers.AcceptInvite)
 
@@ -93,7 +106,6 @@ func Setup(app *fiber.App) {
 	ws.Delete("/:id/subscriptions/:subID", handlers.CancelSubscription)
 	// Billing
 	ws.Get("/:id/billing",               handlers.GetBillingStatus)
-	ws.Post("/:id/billing/checkout",     handlers.CreateCheckoutSession)
 	ws.Post("/:id/billing/portal",       handlers.CreatePortalSession)
 	ws.Post("/:id/billing/sync",         handlers.SyncBilling)
 }

@@ -47,9 +47,8 @@ func AdminListProducts(c *fiber.Ctx) error {
 
 func CreateProduct(c *fiber.Ctx) error {
 	type body struct {
-		Name          string  `json:"name"`
-		Description   string  `json:"description"`
-		StripePriceID *string `json:"stripe_price_id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -67,10 +66,9 @@ func CreateProduct(c *fiber.Ctx) error {
 	}
 
 	product := models.Product{
-		Name:          req.Name,
-		Description:   strings.TrimSpace(req.Description),
-		StripePriceID: req.StripePriceID,
-		IsActive:      true,
+		Name:        req.Name,
+		Description: strings.TrimSpace(req.Description),
+		IsActive:    true,
 	}
 	if err := database.DB.Create(&product).Error; err != nil {
 		return serverError(c, "Failed to create product")
@@ -96,10 +94,10 @@ func UpdateProduct(c *fiber.Ctx) error {
 	}
 
 	type body struct {
-		Name          *string `json:"name"`
-		Description   *string `json:"description"`
-		IsActive      *bool   `json:"is_active"`
-		StripePriceID *string `json:"stripe_price_id"`
+		Name         *string  `json:"name"`
+		Description  *string  `json:"description"`
+		IsActive     *bool    `json:"is_active"`
+		RedirectURLs []string `json:"redirect_urls"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -120,8 +118,8 @@ func UpdateProduct(c *fiber.Ctx) error {
 	if req.IsActive != nil {
 		updates["is_active"] = *req.IsActive
 	}
-	if req.StripePriceID != nil {
-		updates["stripe_price_id"] = *req.StripePriceID
+	if req.RedirectURLs != nil {
+		updates["redirect_urls"] = req.RedirectURLs
 	}
 
 	if len(updates) == 0 {
@@ -132,7 +130,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 		return serverError(c, "Failed to update product")
 	}
 
-	// Re-fetch to return fresh data
+	// Re-fetch to return fresh data (GORM's Updates won't reload json-serialized fields).
 	database.DB.First(&product, "id = ?", id)
 	return c.JSON(fiber.Map{"product": product})
 }
@@ -164,7 +162,151 @@ func DeactivateProduct(c *fiber.Ctx) error {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/products/:name/launch  (protected — authenticated user)
+// DELETE /api/v1/admin/products/:id/permanent  (admin only)
+// Permanently removes a product row from the database.
+// ⚠  Any existing subscriptions referencing this product will have a dangling
+//    foreign key — only call this when you are certain no live subscriptions
+//    reference the product (deactivate first, confirm, then hard-delete).
+// ─────────────────────────────────────────────────────────────────────────────
+
+func PermanentDeleteProduct(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return badRequest(c, "Invalid product ID")
+	}
+
+	var product models.Product
+	if tx := database.DB.First(&product, "id = ?", id); tx.Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
+	}
+
+	// Delete child rows first to satisfy FK constraints before removing the product.
+	// subscriptions.product_id → products.id (fk_subscriptions_product)
+	if err := database.DB.Where("product_id = ?", id).Delete(&models.Subscription{}).Error; err != nil {
+		return serverError(c, "Failed to remove product subscriptions before delete")
+	}
+
+	if err := database.DB.Delete(&models.Product{}, "id = ?", id).Error; err != nil {
+		return serverError(c, "Failed to delete product")
+	}
+
+	return c.JSON(fiber.Map{"message": "Product permanently deleted"})
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/v1/admin/products/:id/regenerate-key  (admin only)
+//
+// Generates a brand-new API key for the product and saves it.
+// The old key is immediately invalidated — inform the product team to update
+// their ACCOUNTS_API_KEY env var.
+// ───────────────────────────────────────────────────────────────────────────────
+
+func RegenerateProductAPIKey(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return badRequest(c, "Invalid product ID")
+	}
+
+	var product models.Product
+	if tx := database.DB.First(&product, "id = ?", id); tx.Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
+	}
+
+	newKey, err := models.GenerateAPIKey()
+	if err != nil {
+		return serverError(c, "Failed to generate API key")
+	}
+
+	if err := database.DB.Model(&product).Update("api_key", newKey).Error; err != nil {
+		return serverError(c, "Failed to save API key")
+	}
+
+	product.APIKey = newKey
+	return c.JSON(fiber.Map{"product": product})
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// POST /api/v1/products/verify  (public, authenticated by X-API-Key)
+//
+// Used by Gour products for server-to-server token verification.
+// The product passes the JWT it received from the frontend and their API key;
+// Accounts confirms the token is valid, checks the subscription, and returns
+// the user identity so the product never needs to share the JWT_SECRET.
+//
+// Request
+//   Header: X-API-Key: gour_ce_xxxx
+//   Body:   { "token": "<launch-token-jwt>" }
+//
+// Response 200
+//   { "valid": true, "user_id": "", "email": "", "workspace_id": "",
+//     "subscribed": true }               <- subscribed = has active subscription
+//
+// Response 401  invalid or missing API key
+// Response 422  token missing or malformed
+// ───────────────────────────────────────────────────────────────────────────────
+
+func VerifyToken(c *fiber.Ctx) error {
+	// 1. Authenticate the calling product via its API key.
+	apiKey := strings.TrimSpace(c.Get("X-API-Key"))
+	if apiKey == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Missing X-API-Key header"))
+	}
+
+	var product models.Product
+	if database.DB.Where("api_key = ? AND is_active = true", apiKey).First(&product).Error != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(errJSON("Invalid API key"))
+	}
+
+	// 2. Parse and validate the JWT token from the request body.
+	type reqBody struct {
+		Token string `json:"token"`
+	}
+	req := new(reqBody)
+	if err := c.BodyParser(req); err != nil || strings.TrimSpace(req.Token) == "" {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(errJSON("Request body must contain { \"token\": \"...\" }"))
+	}
+
+	parsed, err := jwt.Parse(req.Token, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fiber.ErrUnauthorized
+		}
+		return []byte(config.Cfg.JWTSecret), nil
+	},
+		jwt.WithIssuer(config.Cfg.JWTIssuer),
+		jwt.WithAudience(config.Cfg.JWTAudience),
+	)
+	if err != nil || !parsed.Valid {
+		return c.JSON(fiber.Map{"valid": false, "reason": "token expired or invalid"})
+	}
+
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	if !ok {
+		return c.JSON(fiber.Map{"valid": false, "reason": "malformed claims"})
+	}
+
+	userID, _      := claims["sub"].(string)
+	email, _       := claims["email"].(string)
+	workspaceIDStr, _ := claims["workspace_id"].(string)
+
+	// 3. Check whether this workspace has an active subscription to the calling product.
+	subscribed := false
+	if wid, err := uuid.Parse(workspaceIDStr); err == nil {
+		var sub models.Subscription
+		if database.DB.
+			Where("workspace_id = ? AND product_id = ? AND status = 'active'", wid, product.ID).
+			First(&sub).Error == nil {
+			subscribed = sub.IsAccessible()
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"valid":        true,
+		"user_id":      userID,
+		"email":        email,
+		"workspace_id": workspaceIDStr,
+		"subscribed":   subscribed,
+	})
+}
 //
 // Checks the caller's active subscription, signs a 7-day launch token, and
 // returns the full callback URL for the frontend to navigate to.

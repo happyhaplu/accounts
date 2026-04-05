@@ -36,9 +36,9 @@ app.Use(logger.New())
 // frontend, dev localhost) come from the ALLOW_ORIGINS env var.
 database.SetStaticOrigins(cfg.AllowOrigins)
 app.Use(cors.New(cors.Config{
-AllowOriginsFunc: database.IsAllowedOrigin,
-AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
-AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+	AllowOriginsFunc: database.IsAllowedOrigin,
+	AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-API-Key, X-Admin-Secret",
+	AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 }))
 
 // Register all routes
