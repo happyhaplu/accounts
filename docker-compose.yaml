@@ -16,19 +16,27 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Go API backend ───────────────────────────────────────────────────────────
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+  # ── Combined app: Go API (port 8080 internal) + nginx SPA (port 80) ──────────
+  # Built from the root Dockerfile which embeds the Go binary inside the nginx
+  # container.  docker-start.sh boots the Go server on :8080, then starts nginx
+  # on :80 which proxies /api/ → 127.0.0.1:8080.
+  #
+  # NOTE: BACKEND_URL is intentionally NOT set here.  docker-start.sh always
+  # forces it to http://127.0.0.1:8080 so nginx reaches the Go server running
+  # inside the same container regardless of what Coolify may inject.
+  app:
+    build: .
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       PORT:                   ${PORT:-8080}
-      DB_HOST:                db               # service name above
-      DB_PORT:                5432
+
+      # ── Postgres ──────────────────────────────────────────────────
+      # "db" is the service name above; always in the same compose network.
+      DB_HOST:                ${DB_HOST:-db}
+      DB_PORT:                ${DB_PORT:-5432}
       DB_USER:                ${DB_USER:-gour}
       DB_PASSWORD:            ${DB_PASSWORD:-gour}
       DB_NAME:                ${DB_NAME:-accounts}
@@ -50,7 +58,7 @@ services:
       AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-http://localhost:4000/auth/callback,http://localhost:3000/callback,https://reach.gour.io/auth/callback,https://warmup.gour.io/callback,https://sendflow.gour.io/callback}
       ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-http://localhost:3000,http://localhost:4000,https://warmup.gour.io,https://reach.gour.io,https://sendflow.gour.io}
 
-      # ── Admin ─────────────────────────────────────────────────────
+      # ── Admin panel ───────────────────────────────────────────────
       ADMIN_SECRET:           ${ADMIN_SECRET:-gour-admin-secret-change-me}
       ADMIN_EMAIL:            ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD:         ${ADMIN_PASSWORD:-}
@@ -70,40 +78,17 @@ services:
       STRIPE_EMAIL_WARMUP_PRICE_ID: ${STRIPE_EMAIL_WARMUP_PRICE_ID:-price_1T9zUvHKFrC8ZGXqp8kExIBa}
       STRIPE_REACH_PRICE_ID:  ${STRIPE_REACH_PRICE_ID:-price_1TBJyxHKFrC8ZGXq2S97y4RI}
       STRIPE_SENDFLOW_PRICE_ID: ${STRIPE_SENDFLOW_PRICE_ID:-price_1TEkorHKFrC8ZGXqotnT8Nvk}
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/v1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    # No external port — backend is only reachable internally via Docker network.
-    # nginx (frontend) proxies /api/ → http://backend:8080 without exposing 8080.
-    expose:
-      - "8080"
 
-  # ── Vue frontend (nginx) ─────────────────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      - SERVICE_FQDN_FRONTEND=${SERVICE_FQDN_FRONTEND:-https://accounts.gour.io}
-      - BACKEND_URL=${BACKEND_URL:-http://backend:8080}
     labels:
       - traefik.enable=true
-      - traefik.http.services.frontend.loadbalancer.server.port=80
+      - traefik.http.services.app.loadbalancer.server.port=80
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:80/ > /dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
+      # wget is pre-installed in the nginx:alpine runtime stage
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/api/v1/health"]
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 10s
-    expose:
-      - "80"
+      start_period: 30s
 
 volumes:
   postgres_data:

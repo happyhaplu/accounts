@@ -20,8 +20,9 @@ WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o server .
+# Do NOT pin GOARCH — let Go target the native arch of the build host
+# so the binary runs on both amd64 and arm64 Coolify servers.
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o server .
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 3: Runtime — nginx (serves SPA) + Go binary (API)

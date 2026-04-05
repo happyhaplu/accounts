@@ -1,9 +1,16 @@
 #!/bin/sh
 set -e
 
-# Default BACKEND_URL to localhost since both services run in this container.
-# Coolify can override this if you ever split into two containers later.
-export BACKEND_URL="${BACKEND_URL:-http://localhost:8080}"
+# ── Postgres host ─────────────────────────────────────────────────────────────
+# "db" is the postgres service name in docker-compose.  Can be overridden via
+# the DB_HOST env var in Coolify / docker-compose, but defaults to "db".
+export DB_HOST="${DB_HOST:-db}"
+
+# ── Backend URL ───────────────────────────────────────────────────────────────
+# nginx and the Go API ALWAYS run inside this same combined container.
+# Force 127.0.0.1 — ignore any external BACKEND_URL value (e.g. Coolify may
+# set it to "http://backend:8080" which cannot resolve inside this container).
+BACKEND_URL="http://127.0.0.1:8080"
 
 # Substitute only ${BACKEND_URL} — leave all nginx variables ($host, $remote_addr, etc.) untouched
 envsubst '${BACKEND_URL}' \
