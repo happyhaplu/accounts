@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"outcraftly/accounts/config"
 	"outcraftly/accounts/models"
@@ -22,12 +23,21 @@ func Connect(cfg *config.Config) {
 		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName,
 	)
 
+	// Retry loop — postgres may pass its healthcheck (pg_isready) before the
+	// user/database have finished initialising.  Retry for up to 30 seconds.
 	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+	for attempt := 1; attempt <= 10; attempt++ {
+		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err == nil {
+			break
+		}
+		log.Printf("⏳ DB not ready (attempt %d/10): %v — retrying in 3 s...", attempt, err)
+		time.Sleep(3 * time.Second)
+	}
 	if err != nil {
-		log.Fatalf("❌ Failed to connect to PostgreSQL: %v", err)
+		log.Fatalf("❌ Failed to connect to PostgreSQL after 10 attempts: %v", err)
 	}
 
 	if err = DB.AutoMigrate(

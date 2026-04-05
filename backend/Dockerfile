@@ -11,9 +11,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source and build a static binary
+# Do NOT pin GOARCH — let Go target the native architecture of the build host
+# so the binary runs correctly on both amd64 and arm64 Coolify servers.
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o /app/server .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/server .
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM alpine:3.19
