@@ -77,6 +77,26 @@ app.Use(cors.New(cors.Config{
 // Register all routes
 routes.Setup(app)
 
+// ── Uploads — always registered (dev + production) ───────────────────────
+// Product logos are written to ./uploads/logos/ by UploadProductLogo.
+// This route must be outside the dist/ block so it works in local dev too
+// (no dist/ exists in dev; Vite dev server proxies /uploads/* to here).
+app.Get("/uploads/*", func(c *fiber.Ctx) error {
+	urlPath := filepath.Clean(c.Path())
+	uploadFilePath := filepath.Join(".", urlPath)
+	if data, readErr := os.ReadFile(uploadFilePath); readErr == nil {
+		ext := strings.ToLower(filepath.Ext(uploadFilePath))
+		if ct, ok := webMIME[ext]; ok {
+			c.Set("Content-Type", ct)
+		} else {
+			c.Set("Content-Type", "application/octet-stream")
+		}
+		c.Set("Cache-Control", "public, max-age=3600")
+		return c.Send(data)
+	}
+	return c.SendStatus(fiber.StatusNotFound)
+})
+
 // ── SPA static file serving (production) ─────────────────────────────────
 // In Docker the built Vue dist/ directory lives at ./dist alongside the
 // binary.  Fiber serves it directly — no nginx needed.
@@ -99,27 +119,7 @@ if _, err := os.Stat("./dist/index.html"); err == nil {
 	log.Printf("📁 Serving Vue SPA from ./dist\n--- index.html (first 500 chars) ---\n%s\n---", snippet)
 
 	app.Get("/*", func(c *fiber.Ctx) error {
-		// Build safe path inside dist/ (filepath.Clean resolves "..")
 		urlPath := filepath.Clean(c.Path())
-
-		// Serve product logos and other user-uploaded files from ./uploads/
-		// These are written by UploadProductLogo and must be served without
-		// falling into the dist/ lookup below.
-		if strings.HasPrefix(urlPath, "/uploads/") {
-			uploadFilePath := filepath.Join(".", urlPath)
-			if data, readErr := os.ReadFile(uploadFilePath); readErr == nil {
-				ext := strings.ToLower(filepath.Ext(uploadFilePath))
-				if ct, ok := webMIME[ext]; ok {
-					c.Set("Content-Type", ct)
-				} else {
-					c.Set("Content-Type", "application/octet-stream")
-				}
-				c.Set("Cache-Control", "public, max-age=3600")
-				return c.Send(data)
-			}
-			return c.SendStatus(fiber.StatusNotFound)
-		}
-
 		fp := filepath.Join("dist", urlPath)
 
 		// Try to serve the real file with explicit Content-Type.
