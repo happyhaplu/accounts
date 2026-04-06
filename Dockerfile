@@ -41,8 +41,12 @@ COPY --from=backend-builder /app/server /app/server
 # Vue SPA static files
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
-# Nginx config template (BACKEND_URL substituted at startup)
-COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
+# Nginx config template (BACKEND_URL substituted at startup by docker-start.sh)
+# Stored in /tmp — NOT in /etc/nginx/templates/ — so nginx:alpine's own
+# entrypoint never processes it (avoiding a double-substitution race where
+# it would substitute ${BACKEND_URL} with whatever is in the environment
+# at that moment, before docker-start.sh forces it to 127.0.0.1).
+COPY frontend/nginx.conf.template /tmp/nginx.conf.template
 
 # Startup script: fills nginx template, starts Go API, then runs nginx
 COPY docker-start.sh /docker-start.sh
