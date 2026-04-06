@@ -43,7 +43,7 @@ services:
       DB_NAME:                 "accounts"
 
       # ── Auth & JWT ────────────────────────────────────────────────
-      JWT_SECRET:              "gour-jwt-production-secret-change-me"
+      JWT_SECRET:              "3d6262178edc142a0fc204443b4531f6dc94276bd6ea46d666befc507e35f560866cba4757a268f0bd2f2bec484e831d"
       JWT_ISSUER:              "accounts.gour.io"
       JWT_AUDIENCE:            "accounts.gour.io"
       ACCOUNTS_BASE_URL:       "https://accounts.gour.io"
@@ -57,7 +57,7 @@ services:
       ALLOW_ORIGINS:           "https://accounts.gour.io"
 
       # ── Admin panel ───────────────────────────────────────────────
-      ADMIN_SECRET:            "gour-admin-secret-change-me"
+      ADMIN_SECRET:            "4ceaf918bb3598936c7093e5215627df352ab85ae9babad95ff5d4caaf893040"
       ADMIN_EMAIL:             "happy.outcraftly@zohomail.in"
       ADMIN_PASSWORD:          "System@123321"
 
