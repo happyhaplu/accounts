@@ -29,6 +29,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // Forward uploaded product logos to the Go backend
+      // (files live at ./uploads/logos/ next to the binary, not inside Vite)
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })
