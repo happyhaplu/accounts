@@ -64,6 +64,7 @@ func Setup(app *fiber.App) {
 	admin.Delete("/products/:id",             handlers.DeactivateProduct)
 	admin.Delete("/products/:id/permanent",   handlers.PermanentDeleteProduct)
 	admin.Post("/products/:id/regenerate-key", handlers.RegenerateProductAPIKey)
+	admin.Post("/products/:id/logo",           handlers.UploadProductLogo)
 	admin.Get("/subscriptions",               handlers.AdminListSubscriptions)
 	admin.Get("/billing",                     handlers.AdminBillingOverview)
 	admin.Get("/users",                       handlers.AdminListUsers)

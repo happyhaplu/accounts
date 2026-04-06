@@ -40,8 +40,11 @@
                 <a v-for="app in apps" :key="app.name" :href="app.url" class="app-tile"
                    rel="noopener" @click="appsOpen = false">
                   <div class="app-icon-wrap"
-                       :style="{ background: app.gradient, boxShadow: '0 4px 14px ' + app.shadow }">
-                    <span class="app-letter">{{ app.short }}</span>
+                       :style="app.logo_url
+                         ? { background: '#fff', border: '1px solid #dadce0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }
+                         : { background: app.gradient, boxShadow: '0 4px 14px ' + app.shadow }">
+                    <img v-if="app.logo_url" :src="app.logo_url" :alt="app.name" class="app-logo-img" />
+                    <span v-else class="app-letter">{{ app.short }}</span>
                   </div>
                   <span class="app-tile-name">{{ app.name }}</span>
                   <span class="app-tile-badge">
@@ -164,6 +167,7 @@ onMounted(async () => {
       return {
         name: p.description || p.name,
         short,
+        logo_url: p.logo_url || '',
         gradient: colors.gradient,
         shadow: colors.shadow,
         url: `/products/${p.name}/launch`,
@@ -381,6 +385,10 @@ button { font-family: inherit; }
 .app-letter {
   font-size: 17px; font-weight: 800; color: #fff;
   letter-spacing: -0.5px; user-select: none;
+}
+.app-logo-img {
+  width: 38px; height: 38px; object-fit: contain;
+  border-radius: 8px;
 }
 
 /* Name */

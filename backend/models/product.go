@@ -20,6 +20,9 @@ type Product struct {
 	// Index 0 is used as the product's home URL shown in the Billing page.
 	RedirectURLs []string `gorm:"serializer:json;type:text;default:'[]'"          json:"redirect_urls"`
 	IsActive     bool      `gorm:"not null;default:true"                          json:"is_active"`
+	// LogoURL holds the relative path to the uploaded product logo, e.g. /uploads/logos/<id>.png
+	// Empty string means no logo has been uploaded (UI falls back to letter initial).
+	LogoURL      string    `gorm:"type:varchar(500);default:''"                   json:"logo_url"`
 	// APIKey is the secret key given to each product for server-to-server calls.
 	// Format: gour_ce_<32 hex chars>  (e.g. gour_ce_a1b2c3...)
 	// Treat like a password — only shown in the Admin UI, never in public endpoints.

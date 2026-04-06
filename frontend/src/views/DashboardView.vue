@@ -196,7 +196,10 @@
 
         <div v-else class="products-grid">
           <div v-for="prod in enrichedProducts" :key="prod.id" class="product-card">
-            <div class="product-icon-wrap">{{ prod.icon }}</div>
+            <div class="product-icon-wrap">
+              <img v-if="prod.logo_url" :src="prod.logo_url" :alt="prod.displayName" class="product-card-logo" />
+              <template v-else>{{ prod.icon }}</template>
+            </div>
             <div class="product-name">{{ prod.displayName }}</div>
 
             <!-- Active subscription → Launch button -->
@@ -256,6 +259,7 @@ const enrichedProducts = computed(() =>
     icon:        '🚀',
     displayName: p.description || p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
     subscribed:  activeSubNames.value.has(p.name),
+    logo_url:    p.logo_url || '',
   }))
 )
 
@@ -415,7 +419,15 @@ function formatDate(iso) {
   box-shadow: 0 2px 10px rgba(26,115,232,0.08);
 }
 .empty-card { opacity: 0.5; }
-.product-icon-wrap { font-size: 2rem; margin-bottom: 0.25rem; }
+.product-icon-wrap {
+  font-size: 2rem; margin-bottom: 0.25rem;
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+}
+.product-card-logo {
+  width: 44px; height: 44px; object-fit: contain; border-radius: 10px;
+  border: 1px solid #dadce0;
+}
 .product-name  { font-weight: 600; font-size: 0.9rem; color: var(--text, #202124); }
 .product-badge {
   display: inline-block;

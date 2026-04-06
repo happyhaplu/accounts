@@ -101,6 +101,25 @@ if _, err := os.Stat("./dist/index.html"); err == nil {
 	app.Get("/*", func(c *fiber.Ctx) error {
 		// Build safe path inside dist/ (filepath.Clean resolves "..")
 		urlPath := filepath.Clean(c.Path())
+
+		// Serve product logos and other user-uploaded files from ./uploads/
+		// These are written by UploadProductLogo and must be served without
+		// falling into the dist/ lookup below.
+		if strings.HasPrefix(urlPath, "/uploads/") {
+			uploadFilePath := filepath.Join(".", urlPath)
+			if data, readErr := os.ReadFile(uploadFilePath); readErr == nil {
+				ext := strings.ToLower(filepath.Ext(uploadFilePath))
+				if ct, ok := webMIME[ext]; ok {
+					c.Set("Content-Type", ct)
+				} else {
+					c.Set("Content-Type", "application/octet-stream")
+				}
+				c.Set("Cache-Control", "public, max-age=3600")
+				return c.Send(data)
+			}
+			return c.SendStatus(fiber.StatusNotFound)
+		}
+
 		fp := filepath.Join("dist", urlPath)
 
 		// Try to serve the real file with explicit Content-Type.

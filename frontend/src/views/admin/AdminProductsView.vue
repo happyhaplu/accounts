@@ -87,11 +87,19 @@
           </tr>
           <tr v-for="p in filteredProducts" :key="p.id" :class="{ 'row-inactive': !p.is_active }">
             <td>
-              <div class="product-name">
-                {{ p.name }}
-                <span v-if="!p.is_active && (!p.redirect_urls || !p.redirect_urls.length)" class="badge-legacy">legacy</span>
+              <div class="product-name-cell">
+                <div class="product-logo-thumb" :style="!p.logo_url ? { background: 'var(--blue-light)' } : {}">
+                  <img v-if="p.logo_url" :src="p.logo_url" :alt="p.name" class="product-logo-img" />
+                  <span v-else class="product-logo-initial">{{ p.name[0]?.toUpperCase() }}</span>
+                </div>
+                <div>
+                  <div class="product-name">
+                    {{ p.name }}
+                    <span v-if="!p.is_active && (!p.redirect_urls || !p.redirect_urls.length)" class="badge-legacy">legacy</span>
+                  </div>
+                  <div class="product-desc">{{ p.description || '—' }}</div>
+                </div>
               </div>
-              <div class="product-desc">{{ p.description || '—' }}</div>
             </td>
             <td>
               <div v-if="p.redirect_urls && p.redirect_urls.length" class="url-list">
@@ -215,6 +223,47 @@
                 ></textarea>
               </div>
 
+              <!-- Logo upload -->
+              <div class="mfield">
+                <label>Product logo <span class="field-hint-inline">(PNG, JPG, SVG, WEBP — max 2 MB)</span></label>
+                <div class="logo-upload-area">
+                  <!-- Current / preview image -->
+                  <div v-if="modal.form.logoPreview" class="logo-preview-wrap">
+                    <img :src="modal.form.logoPreview" alt="Logo preview" class="logo-preview-img" />
+                    <button type="button" class="logo-clear-btn" @click="clearLogo" :disabled="modal.saving" title="Remove logo">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  <!-- Placeholder -->
+                  <div v-else class="logo-placeholder">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <span>No logo</span>
+                  </div>
+                  <!-- File input -->
+                  <label class="btn-upload" :class="{ disabled: modal.saving }">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                    </svg>
+                    {{ modal.form.logoPreview ? 'Change logo' : 'Upload logo' }}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp,image/gif"
+                      class="logo-file-input"
+                      @change="handleLogoFile"
+                      :disabled="modal.saving"
+                    />
+                  </label>
+                </div>
+                <p v-if="modal.form.logoFile" class="field-hint logo-file-name">
+                  Selected: <strong>{{ modal.form.logoFile.name }}</strong> — will upload on save
+                </p>
+              </div>
+
               <!-- Redirect URLs -->
               <div class="mfield">
                 <label>Redirect URLs <span class="field-hint-inline">(one per line)</span></label>
@@ -327,6 +376,7 @@ const copied   = ref(null)  // id or 'modal' when copy-flash is active
 // Filter & search
 const activeFilter = ref('active')  // 'active' | 'inactive' | 'all' — default hides legacy inactive
 const search       = ref('')
+const logoUploading = ref(false)
 
 const activeCount   = computed(() => products.value.filter(p => p.is_active).length)
 const inactiveCount = computed(() => products.value.filter(p => !p.is_active).length)
@@ -364,6 +414,9 @@ const emptyForm = () => ({
   redirectUrlsText: '',
   is_active:        true,
   api_key:          '',
+  logo_url:         '',
+  logoFile:         null,
+  logoPreview:      '',
 })
 
 const modal = reactive({
@@ -411,6 +464,9 @@ function openEdit(product) {
     redirectUrlsText: (product.redirect_urls ?? []).join('\n'),
     is_active:        product.is_active,
     api_key:          product.api_key ?? '',
+    logo_url:         product.logo_url ?? '',
+    logoFile:         null,
+    logoPreview:      product.logo_url ?? '',
   })
   Object.assign(modal.errors, { name: '' })
 }
@@ -456,22 +512,47 @@ async function saveProduct() {
   const redirectUrls = parseRedirectURLs(modal.form.redirectUrlsText)
 
   try {
+    let savedProductId = modal.form.id
+
     if (modal.isEdit) {
       const payload = {
         description:   modal.form.description.trim(),
         redirect_urls: redirectUrls,
       }
       await adminAPI.updateProduct(modal.form.id, payload)
-      showToast(`"${modal.form.name}" updated successfully`)
     } else {
       const payload = {
         name:          modal.form.name.trim().toLowerCase(),
         description:   modal.form.description.trim(),
         redirect_urls: redirectUrls,
       }
-      await adminAPI.createProduct(payload)
-      showToast(`"${payload.name}" created successfully`)
+      const { data } = await adminAPI.createProduct(payload)
+      savedProductId = data.product.id
     }
+
+    // Upload logo if user selected a file
+    if (modal.form.logoFile && savedProductId) {
+      logoUploading.value = true
+      const fd = new FormData()
+      fd.append('logo', modal.form.logoFile)
+      try {
+        await adminAPI.uploadProductLogo(savedProductId, fd)
+      } catch (logoErr) {
+        // Non-fatal — product was saved, but logo upload failed
+        showToast(
+          `Saved, but logo upload failed: ${logoErr.response?.data?.error ?? logoErr.message}`,
+          'error'
+        )
+        logoUploading.value = false
+        modal.open = false
+        await fetchProducts()
+        return
+      } finally {
+        logoUploading.value = false
+      }
+    }
+
+    showToast(modal.isEdit ? `"${modal.form.name}" updated successfully` : `"${modal.form.name.trim()}" created successfully`)
     modal.open = false
     await fetchProducts()
   } catch (err) {
@@ -481,6 +562,21 @@ async function saveProduct() {
   } finally {
     modal.saving = false
   }
+}
+
+// ── Logo file selection ───────────────────────────────────────────────────────
+function handleLogoFile(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  modal.form.logoFile = file
+  modal.form.logoPreview = URL.createObjectURL(file)
+}
+
+function clearLogo() {
+  modal.form.logoFile    = null
+  modal.form.logoPreview = ''
+  // If editing and removing an existing logo, also clear logo_url
+  modal.form.logo_url = ''
 }
 
 // ── Toggle active / inactive ──────────────────────────────────────────────────
@@ -1016,6 +1112,65 @@ async function confirmDeactivate() {
 .modal-fade-enter-active .modal-card, .modal-fade-leave-active .modal-card { transition: transform 0.2s; }
 .modal-fade-enter-from .modal-card { transform: scale(0.96); }
 .modal-fade-leave-to .modal-card   { transform: scale(0.96); }
+
+/* ── Table logo thumbnail ─────────────────────────────────────────────────── */
+.product-name-cell {
+  display: flex; align-items: center; gap: 12px;
+}
+.product-logo-thumb {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.product-logo-img {
+  width: 100%; height: 100%; object-fit: contain;
+}
+.product-logo-initial {
+  font-size: 15px; font-weight: 700; color: var(--blue);
+  user-select: none;
+}
+
+/* ── Logo upload in modal ─────────────────────────────────────────────────── */
+.logo-upload-area {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.logo-preview-wrap {
+  position: relative; width: 64px; height: 64px;
+  border-radius: 12px; overflow: hidden;
+  border: 1.5px solid var(--border);
+}
+.logo-preview-wrap img {
+  width: 100%; height: 100%; object-fit: contain;
+}
+.logo-clear-btn {
+  position: absolute; top: 3px; right: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,0.55); border: none;
+  color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.logo-clear-btn:hover { background: rgba(0,0,0,0.75); }
+.logo-placeholder {
+  width: 64px; height: 64px; border-radius: 12px;
+  border: 1.5px dashed var(--border);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; background: #fafbff;
+  font-size: 10px; color: var(--text-hint);
+}
+.btn-upload {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 6px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  font-size: 13px; font-weight: 500; color: var(--text);
+  cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.btn-upload:hover:not(.disabled) { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+.btn-upload.disabled { opacity: 0.5; cursor: not-allowed; }
+.logo-file-input { display: none; }
+.logo-file-name  { color: var(--text-muted); }
 
 
 </style>

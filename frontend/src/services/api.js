@@ -130,6 +130,12 @@ export const adminAPI = {
   deactivateProduct:      (id)       => adminAxios.delete(`/admin/products/${id}`),
   permanentDeleteProduct: (id)       => adminAxios.delete(`/admin/products/${id}/permanent`),
   regenerateProductKey:   (id)       => adminAxios.post(`/admin/products/${id}/regenerate-key`),
+  // Logo upload — send a FormData object with a "logo" file field.
+  // Returns { product, logo_url }
+  uploadProductLogo: (id, formData) =>
+    adminAxios.post(`/admin/products/${id}/logo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 
   // Users
   listUsers:             (params) => adminAxios.get('/admin/users',                  { params }),

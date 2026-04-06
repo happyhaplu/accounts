@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,6 +51,7 @@ func CreateProduct(c *fiber.Ctx) error {
 	type body struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
+		LogoURL     string `json:"logo_url"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -68,6 +71,7 @@ func CreateProduct(c *fiber.Ctx) error {
 	product := models.Product{
 		Name:        req.Name,
 		Description: strings.TrimSpace(req.Description),
+		LogoURL:     strings.TrimSpace(req.LogoURL),
 		IsActive:    true,
 	}
 	if err := database.DB.Create(&product).Error; err != nil {
@@ -98,6 +102,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 		Description  *string  `json:"description"`
 		IsActive     *bool    `json:"is_active"`
 		RedirectURLs []string `json:"redirect_urls"`
+		LogoURL      *string  `json:"logo_url"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -120,6 +125,9 @@ func UpdateProduct(c *fiber.Ctx) error {
 	}
 	if req.RedirectURLs != nil {
 		updates["redirect_urls"] = req.RedirectURLs
+	}
+	if req.LogoURL != nil {
+		updates["logo_url"] = strings.TrimSpace(*req.LogoURL)
 	}
 
 	if len(updates) == 0 {
@@ -159,6 +167,84 @@ func DeactivateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found or already inactive"))
 	}
 	return c.JSON(fiber.Map{"message": "Product deactivated"})
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/v1/admin/products/:id/logo  (admin only)
+// Accepts a multipart/form-data file field named "logo".
+// Saves the image to ./uploads/logos/<product-id>.<ext> and stores the
+// public path in product.logo_url so users see it in the waffle menu and
+// dashboard. Replaces any previously uploaded logo for this product.
+//
+// Constraints: JPEG, PNG, SVG, WEBP, GIF only; max 2 MB.
+// ─────────────────────────────────────────────────────────────────────────────
+
+func UploadProductLogo(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return badRequest(c, "Invalid product ID")
+	}
+
+	var product models.Product
+	if tx := database.DB.First(&product, "id = ?", id); tx.Error != nil {
+		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
+	}
+
+	file, err := c.FormFile("logo")
+	if err != nil {
+		return badRequest(c, "No logo file provided (field name: \"logo\")")
+	}
+
+	// Max 2 MB
+	const maxSize = 2 * 1024 * 1024
+	if file.Size > maxSize {
+		return badRequest(c, "Logo must be under 2 MB")
+	}
+
+	// Determine extension from Content-Type header
+	ct := file.Header.Get("Content-Type")
+	allowedExt := map[string]string{
+		"image/png":     ".png",
+		"image/jpeg":    ".jpg",
+		"image/jpg":     ".jpg",
+		"image/svg+xml": ".svg",
+		"image/webp":    ".webp",
+		"image/gif":     ".gif",
+	}
+	ext, ok := allowedExt[ct]
+	if !ok {
+		// Fall back to filename extension when Content-Type is generic
+		ext = strings.ToLower(filepath.Ext(file.Filename))
+		validExts := map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".svg": true, ".webp": true, ".gif": true}
+		if !validExts[ext] {
+			return badRequest(c, fmt.Sprintf("Unsupported file type %q — use PNG, JPEG, SVG, WEBP or GIF", ct))
+		}
+		if ext == ".jpeg" {
+			ext = ".jpg"
+		}
+	}
+
+	// Ensure upload directory exists
+	uploadDir := "./uploads/logos"
+	if mkErr := os.MkdirAll(uploadDir, 0755); mkErr != nil {
+		return serverError(c, "Failed to create uploads directory")
+	}
+
+	// Deterministic filename: <uuid>.<ext> — overwrites previous logo for this product
+	filename := product.ID.String() + ext
+	destPath := filepath.Join(uploadDir, filename)
+
+	if saveErr := c.SaveFile(file, destPath); saveErr != nil {
+		return serverError(c, "Failed to save logo file")
+	}
+
+	logoURL := "/uploads/logos/" + filename
+	if dbErr := database.DB.Model(&product).Update("logo_url", logoURL).Error; dbErr != nil {
+		return serverError(c, "Failed to update logo URL in database")
+	}
+	product.LogoURL = logoURL
+
+	return c.JSON(fiber.Map{"product": product, "logo_url": logoURL})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
