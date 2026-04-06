@@ -52,11 +52,17 @@ services:
       ACCOUNTS_BASE_URL:      ${ACCOUNTS_BASE_URL:-https://accounts.gour.io}
       APP_URL:                ${APP_URL:-https://accounts.gour.io}
 
-      # ── CORS & Redirect allowlists ────────────────────────────────
-      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.gour.io,https://warmup.gour.io,https://reach.gour.io,https://sendflow.gour.io}
-      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:4000,https://accounts.gour.io,https://warmup.gour.io,https://reach.gour.io,https://sendflow.gour.io}
-      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-http://localhost:4000/auth/callback,http://localhost:3000/callback,https://reach.gour.io/auth/callback,https://warmup.gour.io/callback,https://sendflow.gour.io/callback}
-      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-http://localhost:3000,http://localhost:4000,https://warmup.gour.io,https://reach.gour.io,https://sendflow.gour.io}
+      # CORS: only the accounts frontend domain needed as a static origin.
+      # Product origins (warmup, reach, sendflow) are resolved automatically
+      # from each product's redirect_urls field in the DB — zero env changes
+      # needed when registering a new product via the Admin UI.
+      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-https://accounts.gour.io}
+      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-https://accounts.gour.io}
+      # Redirect URI allowlists: also resolved from product DB at runtime.
+      # Leave blank — only set here if a redirect breaks and you need a quick
+      # override without re-registering the product.
+      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-}
+      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-}
 
       # ── Admin panel ───────────────────────────────────────────────
       ADMIN_SECRET:           ${ADMIN_SECRET:-gour-admin-secret-change-me}
