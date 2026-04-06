@@ -21,7 +21,14 @@ services:
   # index.html for Vue Router client-side routes.  Coolify's Traefik
   # handles TLS termination and reverse-proxying to port 3000.
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # SOURCE_COMMIT changes on every deploy → busts Docker BuildKit cache
+        # so the frontend is ALWAYS rebuilt fresh (prevents cross-project
+        # cache collision with Warmup/Reach/SendFlow on the same server).
+        # Coolify sets SOURCE_COMMIT automatically; fallback for local dev.
+        SOURCE_COMMIT: ${SOURCE_COMMIT:-local}
     restart: unless-stopped
     depends_on:
       db:

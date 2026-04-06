@@ -7,8 +7,6 @@
 # ── Stage 1: Build Vue / Vite frontend ──────────────────────────────────────
 FROM node:20-alpine AS frontend-builder
 
-# Use a UNIQUE workdir so Docker cannot match cached layers from other
-# projects (Warmup, Reach, etc.) that also use node:20-alpine + /app.
 WORKDIR /build-gour-accounts-frontend
 
 COPY frontend/package*.json ./
@@ -16,12 +14,20 @@ RUN npm ci --prefer-offline
 
 COPY frontend/ .
 
-# Verify source is correct, then build.  Output shows in Coolify deploy log.
-RUN echo "=== Source check ===" && \
-    grep '<title>' index.html && \
+# ── CACHE BUSTER ────────────────────────────────────────────────────────────
+# Docker BuildKit caches layers by content-hash.  Coolify shares the Docker
+# daemon across ALL projects (Warmup, Reach, Accounts, …), so a cached
+# "npm run build" from another project with a similar Dockerfile structure
+# can be served here.  SOURCE_COMMIT changes on every git push → forces
+# npm run build to always re-run.
+ARG SOURCE_COMMIT=unknown
+RUN echo "Building commit: ${SOURCE_COMMIT}" && \
     npm run build && \
-    echo "=== Build output ===" && \
-    cat dist/index.html
+    echo "=== Build verification ===" && \
+    cat dist/index.html && \
+    echo "" && \
+    grep -q "Gour Accounts" dist/index.html || \
+      (echo "FATAL: dist/index.html does NOT contain 'Gour Accounts' — stale Docker cache!" && exit 1)
 
 # ── Stage 2: Build Go backend ──────────────────────────────────────────────
 FROM golang:1.23-alpine AS backend-builder
@@ -41,14 +47,11 @@ RUN apk --no-cache add ca-certificates tzdata curl
 
 WORKDIR /app
 
-# Go binary
 COPY --from=backend-builder /build-gour-accounts-backend/server .
-
-# Vue SPA — served by Fiber's app.Get("/*") handler
 COPY --from=frontend-builder /build-gour-accounts-frontend/dist ./dist
 
-# Verify dist at build time (visible in Coolify deployment log)
-RUN echo "=== FINAL IMAGE: dist/index.html ===" && cat dist/index.html
+# Final verification visible in Coolify deployment log
+RUN echo "=== FINAL IMAGE ===" && cat dist/index.html && echo ""
 
 EXPOSE 3000
 
