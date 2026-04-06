@@ -48,6 +48,7 @@
                     <span v-else class="app-letter">{{ app.short }}</span>
                   </div>
                   <span class="app-tile-name">{{ app.name }}</span>
+                  <span v-if="app.desc" class="app-tile-desc">{{ app.desc }}</span>
                   <span class="app-tile-badge">
                     <span class="badge-dot"></span>
                     {{ app.status }}
@@ -166,8 +167,10 @@ onMounted(async () => {
     apps.value = (data.products ?? []).map((p, i) => {
       const colors = defaultGradients[i % defaultGradients.length]
       const short = p.name.replace(/-/g, ' ').split(' ').map(w => w[0]?.toUpperCase()).join('').slice(0, 2)
+      const displayName = p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
       return {
-        name: p.description || p.name,
+        name: displayName,
+        desc: p.description || '',
         short,
         logo_url: p.logo_url || '',
         gradient: colors.gradient,
@@ -399,6 +402,13 @@ button { font-family: inherit; }
   text-align: center; line-height: 1.25;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 80px;
+}
+.app-tile-desc {
+  font-size: 9.5px; color: var(--text-muted);
+  text-align: center; line-height: 1.3;
+  max-width: 80px; margin-top: -5px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; word-break: break-word;
 }
 
 /* Badge */

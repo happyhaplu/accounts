@@ -202,6 +202,7 @@
               <template v-else>{{ prod.icon }}</template>
             </div>
             <div class="product-name">{{ prod.displayName }}</div>
+            <p v-if="prod.description" class="product-desc">{{ prod.description }}</p>
 
             <!-- Active subscription → Launch button -->
             <template v-if="prod.subscribed">
@@ -259,7 +260,7 @@ const enrichedProducts = computed(() =>
   rawProducts.value.map(p => ({
     ...p,
     icon:        '🚀',
-    displayName: p.description || p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    displayName: p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
     subscribed:  activeSubNames.value.has(p.name),
     logo_url:    p.logo_url || '',
   }))
@@ -431,6 +432,12 @@ function formatDate(iso) {
   border: 1px solid #dadce0; padding: 4px; background: #fff;
 }
 .product-name  { font-weight: 600; font-size: 0.9rem; color: var(--text, #202124); }
+.product-desc  {
+  font-size: 0.75rem; color: var(--text-muted, #5f6368); text-align: center;
+  line-height: 1.4; margin-top: -0.1rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; max-width: 100%;
+}
 .product-badge {
   display: inline-block;
   background: var(--blue-light, #e8f0fe);
