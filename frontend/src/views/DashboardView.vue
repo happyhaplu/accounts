@@ -197,7 +197,8 @@
         <div v-else class="products-grid">
           <div v-for="prod in enrichedProducts" :key="prod.id" class="product-card">
             <div class="product-icon-wrap">
-              <img v-if="prod.logo_url" :src="prod.logo_url" :alt="prod.displayName" class="product-card-logo" />
+              <img v-if="prod.logo_url && !cardLogoErrors[prod.id]" :src="prod.logo_url" :alt="prod.displayName"
+                   class="product-card-logo" @error="cardLogoErrors[prod.id] = true" />
               <template v-else>{{ prod.icon }}</template>
             </div>
             <div class="product-name">{{ prod.displayName }}</div>
@@ -251,6 +252,7 @@ const activeSubNames   = ref(new Set())
 const productsLoading  = ref(true)
 const launching        = ref(null)
 const launchError      = ref('')
+const cardLogoErrors   = reactive({})
 
 // ── Computed: merge product list with subscription info ───────────────────
 const enrichedProducts = computed(() =>

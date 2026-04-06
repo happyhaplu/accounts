@@ -88,8 +88,9 @@
           <tr v-for="p in filteredProducts" :key="p.id" :class="{ 'row-inactive': !p.is_active }">
             <td>
               <div class="product-name-cell">
-                <div class="product-logo-thumb" :style="!p.logo_url ? { background: 'var(--blue-light)' } : {}">
-                  <img v-if="p.logo_url" :src="p.logo_url" :alt="p.name" class="product-logo-img" />
+                <div class="product-logo-thumb" :style="(!p.logo_url || logoErrors[p.id]) ? { background: 'var(--blue-light)' } : {}">
+                  <img v-if="p.logo_url && !logoErrors[p.id]" :src="p.logo_url" :alt="p.name" class="product-logo-img"
+                       @error="logoErrors[p.id] = true" />
                   <span v-else class="product-logo-initial">{{ p.name[0]?.toUpperCase() }}</span>
                 </div>
                 <div>
@@ -378,6 +379,10 @@ const activeFilter = ref('active')  // 'active' | 'inactive' | 'all' — default
 const search       = ref('')
 const logoUploading = ref(false)
 
+// Track which product logo URLs have failed to load (404 after upload volume wipe etc.)
+// Keyed by product id — value true means fall back to letter initial.
+const logoErrors = reactive({})
+
 const activeCount   = computed(() => products.value.filter(p => p.is_active).length)
 const inactiveCount = computed(() => products.value.filter(p => !p.is_active).length)
 
@@ -435,6 +440,8 @@ const modal = reactive({
 async function fetchProducts() {
   loading.value   = true
   loadError.value = ''
+  // Clear any previous logo errors so freshly-uploaded logos are retried
+  Object.keys(logoErrors).forEach(k => delete logoErrors[k])
   try {
     const { data } = await adminAPI.listProducts()
     products.value = data.products ?? []

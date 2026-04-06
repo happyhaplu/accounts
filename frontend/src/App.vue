@@ -40,10 +40,11 @@
                 <a v-for="app in apps" :key="app.name" :href="app.url" class="app-tile"
                    rel="noopener" @click="appsOpen = false">
                   <div class="app-icon-wrap"
-                       :style="app.logo_url
+                       :style="(app.logo_url && !appLogoErrors[app.name])
                          ? { background: '#fff', border: '1px solid #dadce0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }
                          : { background: app.gradient, boxShadow: '0 4px 14px ' + app.shadow }">
-                    <img v-if="app.logo_url" :src="app.logo_url" :alt="app.name" class="app-logo-img" />
+                    <img v-if="app.logo_url && !appLogoErrors[app.name]" :src="app.logo_url" :alt="app.name"
+                         class="app-logo-img" @error="appLogoErrors[app.name] = true" />
                     <span v-else class="app-letter">{{ app.short }}</span>
                   </div>
                   <span class="app-tile-name">{{ app.name }}</span>
@@ -143,6 +144,7 @@ const appsOpen    = ref(false)
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
 const apps = ref([])
+const appLogoErrors = reactive({})
 
 // Load products dynamically from the API so no product names are hardcoded.
 // Products are registered via Admin UI — this list updates automatically.
