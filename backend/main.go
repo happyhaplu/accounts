@@ -2,6 +2,7 @@ package main
 
 import (
 "log"
+"mime"
 "os"
 "path/filepath"
 
@@ -54,16 +55,37 @@ routes.Setup(app)
 if _, err := os.Stat("./dist/index.html"); err == nil {
 	log.Println("📁 Serving Vue SPA from ./dist")
 
-	// Single catch-all: serve the real file when it exists in ./dist,
-	// otherwise return index.html for Vue Router client-side routing.
-	// c.SendFile sets Content-Type from the extension (.js → application/
-	// javascript, .css → text/css, …) so MIME-type mismatches are impossible.
+	// Pre-read index.html once at startup (small, never changes at runtime).
+	indexHTML, err := os.ReadFile("./dist/index.html")
+	if err != nil {
+		log.Fatalf("❌ Cannot read ./dist/index.html: %v", err)
+	}
+
 	app.Get("/*", func(c *fiber.Ctx) error {
-		fp := filepath.Join("./dist", filepath.Clean(c.Path()))
-		if info, err := os.Stat(fp); err == nil && !info.IsDir() {
-			return c.SendFile(fp)
+		// Build safe path inside dist/ (filepath.Clean resolves "..")
+		clean := filepath.Clean(c.Path())
+		fp := filepath.Join("dist", clean)
+
+		// Try to serve the real file with explicit Content-Type.
+		// We use os.ReadFile + c.Send instead of c.SendFile to guarantee
+		// the correct MIME type is set — no reliance on fasthttp internals.
+		if data, readErr := os.ReadFile(fp); readErr == nil {
+			if ct := mime.TypeByExtension(filepath.Ext(fp)); ct != "" {
+				c.Set("Content-Type", ct)
+			}
+			return c.Send(data)
 		}
-		return c.SendFile("./dist/index.html")
+
+		// Missing file WITH a file extension (.js, .css, .png, …) → 404.
+		// This prevents serving index.html (text/html) for a missing .js
+		// asset, which browsers reject as a MIME-type mismatch.
+		if filepath.Ext(clean) != "" {
+			return c.SendStatus(fiber.StatusNotFound)
+		}
+
+		// No extension → Vue Router client-side route → serve index.html.
+		c.Set("Content-Type", "text/html; charset=utf-8")
+		return c.Send(indexHTML)
 	})
 }
 

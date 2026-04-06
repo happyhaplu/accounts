@@ -7,6 +7,10 @@ WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm ci --prefer-offline
 COPY frontend/ .
+
+# ARG that changes per commit — busts the Docker layer cache so the
+# frontend is always rebuilt with the latest source code.
+ARG SOURCE_COMMIT
 RUN npm run build
 
 # ─────────────────────────────────────────────────────────────────────────────
