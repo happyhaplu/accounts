@@ -5,13 +5,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER:     ${DB_USER:-gour}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-gour}
-      POSTGRES_DB:       ${DB_NAME:-accounts}
+      POSTGRES_USER:     gour
+      POSTGRES_PASSWORD: gour
+      POSTGRES_DB:       accounts
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gour} -d ${DB_NAME:-accounts}"]
+      test: ["CMD-SHELL", "pg_isready -U gour -d accounts"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,62 +24,54 @@ services:
     build:
       context: .
       args:
-        # SOURCE_COMMIT changes on every deploy → busts Docker BuildKit cache
-        # so the frontend is ALWAYS rebuilt fresh (prevents cross-project
-        # cache collision with Warmup/Reach/SendFlow on the same server).
-        # Coolify sets SOURCE_COMMIT automatically; fallback for local dev.
         SOURCE_COMMIT: ${SOURCE_COMMIT:-local}
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      # PORT is hardcoded to 3000 — it MUST match the traefik label below
-      # and Coolify's ports_exposes.  Do NOT override via Coolify env vars.
-      PORT:                   "3000"
+      # ── Server ────────────────────────────────────────────────────
+      PORT:                    "3000"
+      APP_ENV:                 "production"
 
       # ── Postgres ──────────────────────────────────────────────────
-      DB_HOST:                ${DB_HOST:-db}
-      DB_PORT:                ${DB_PORT:-5432}
-      DB_USER:                ${DB_USER:-gour}
-      DB_PASSWORD:            ${DB_PASSWORD:-gour}
-      DB_NAME:                ${DB_NAME:-accounts}
+      DB_HOST:                 "db"
+      DB_PORT:                 "5432"
+      DB_USER:                 "gour"
+      DB_PASSWORD:             "gour"
+      DB_NAME:                 "accounts"
 
       # ── Auth & JWT ────────────────────────────────────────────────
-      APP_ENV:                ${APP_ENV:-production}
-      JWT_SECRET:             ${JWT_SECRET:-gour-jwt-production-secret-change-me}
-      JWT_ISSUER:             ${JWT_ISSUER:-accounts.gour.io}
-      JWT_AUDIENCE:           ${JWT_AUDIENCE:-accounts.gour.io}
-      JWT_PRIVATE_KEY:        ${JWT_PRIVATE_KEY:-}
-      JWT_PUBLIC_KEY:         ${JWT_PUBLIC_KEY:-}
-      JWKS_URL:               ${JWKS_URL:-}
-      ACCOUNTS_BASE_URL:      ${ACCOUNTS_BASE_URL:-https://accounts.gour.io}
-      APP_URL:                ${APP_URL:-https://accounts.gour.io}
+      JWT_SECRET:              "gour-jwt-production-secret-change-me"
+      JWT_ISSUER:              "accounts.gour.io"
+      JWT_AUDIENCE:            "accounts.gour.io"
+      ACCOUNTS_BASE_URL:       "https://accounts.gour.io"
+      APP_URL:                 "https://accounts.gour.io"
 
-      # CORS: only the accounts frontend needed as a static origin.
-      # Product origins are resolved automatically from the DB.
-      CORS_ALLOWED_ORIGINS:   ${CORS_ALLOWED_ORIGINS:-https://accounts.gour.io}
-      ALLOW_ORIGINS:          ${ALLOW_ORIGINS:-https://accounts.gour.io}
-      AUTH_REDIRECT_URIS:     ${AUTH_REDIRECT_URIS:-}
-      ALLOWED_REDIRECT_ORIGINS: ${ALLOWED_REDIRECT_ORIGINS:-}
+      # ── CORS ──────────────────────────────────────────────────────
+      # Only the accounts frontend needed here as a static origin.
+      # Product origins (warmup, reach, etc.) are loaded automatically
+      # from the product registry in the database at runtime.
+      CORS_ALLOWED_ORIGINS:    "https://accounts.gour.io"
+      ALLOW_ORIGINS:           "https://accounts.gour.io"
 
       # ── Admin panel ───────────────────────────────────────────────
-      ADMIN_SECRET:           ${ADMIN_SECRET:-gour-admin-secret-change-me}
-      ADMIN_EMAIL:            ${ADMIN_EMAIL:-}
-      ADMIN_PASSWORD:         ${ADMIN_PASSWORD:-}
+      ADMIN_SECRET:            "gour-admin-secret-change-me"
+      ADMIN_EMAIL:             "happy.outcraftly@zohomail.in"
+      ADMIN_PASSWORD:          "System@123321"
 
-      # ── Email (SMTP — ZeptoMail) ─────────────────────────────────
-      SMTP_HOST:              ${SMTP_HOST:-smtp.zeptomail.in}
-      SMTP_PORT:              ${SMTP_PORT:-587}
-      SMTP_USER:              ${SMTP_USER:-emailapikey}
-      SMTP_PASS:              ${SMTP_PASS:-}
-      SMTP_FROM:              ${SMTP_FROM:-info@gridworkit.online}
-      SMTP_REPLY_TO:          ${SMTP_REPLY_TO:-happy.haplu@gmail.com}
+      # ── Email (ZeptoMail SMTP relay) ──────────────────────────────
+      SMTP_HOST:               "smtp.zeptomail.in"
+      SMTP_PORT:               "587"
+      SMTP_USER:               "emailapikey"
+      SMTP_PASS:               "PHtE6r0IFunoj2EqoxAG4fTsFc6mY4koqb41KQMSuY1CDv4GSU0BrdgsxDG1+kovVqMTFKOemY5rtL+Uu+jWdD6+NGlEVGqyqK3sx/VYSPOZsbq6x00ctVsYfkTaU4PtdNZq0yXXu9jbNA=="
+      SMTP_FROM:               "info@gridworkit.online"
+      SMTP_REPLY_TO:           "happy.haplu@gmail.com"
 
       # ── Stripe (billing) ─────────────────────────────────────────
-      STRIPE_SECRET_KEY:      ${STRIPE_SECRET_KEY:-}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
-      STRIPE_WEBHOOK_SECRET:  ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_SECRET_KEY:       "sk_test_51FmsSaHKFrC8ZGXqMf1s3vr7VVdAJ3xjic1Y3gvNwj8FAvHVbhWIXYTv8Ub7RBONfU54L1ooibwXMZPgMR3cJsUv00k8coD1fK"
+      STRIPE_PUBLISHABLE_KEY:  "pk_test_t4mp0WXS94q9ZBcAiHYJLqqJ00B2DYsxGS"
+      STRIPE_WEBHOOK_SECRET:   "whsec_56d183eaf40acfbf82efbacfae56335b3ba9258da89c7366a1cd13fe7109187e"
 
     labels:
       - traefik.enable=true
