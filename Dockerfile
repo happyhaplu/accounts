@@ -35,6 +35,11 @@ FROM nginx:1.25-alpine
 # wget            → Docker / Coolify health checks
 RUN apk --no-cache add ca-certificates tzdata gettext wget
 
+# Remove the default nginx config so our startup script is the ONLY source
+# of truth for /etc/nginx/conf.d/default.conf — prevents any race where
+# the stock config is briefly active before docker-start.sh runs.
+RUN rm -f /etc/nginx/conf.d/default.conf
+
 # Go API binary
 COPY --from=backend-builder /app/server /app/server
 

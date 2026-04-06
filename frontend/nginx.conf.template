@@ -24,9 +24,17 @@ server {
     }
 
     # ── Static asset caching ──────────────────────────────────────────────────
+    # try_files $uri =404: if the hashed asset doesn't exist return 404, NEVER
+    # fall through to the SPA "try_files ... /index.html" block.
+    # Without this, a missing .js file returns index.html with status 200 and
+    # Content-Type: text/html — which is the MIME type error browsers report.
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        try_files $uri =404;
         expires 1y;
         add_header Cache-Control "public, immutable";
+        # Repeat security headers here — nginx location add_header REPLACES
+        # parent server-block add_headers, so we must redeclare them.
+        add_header X-Content-Type-Options "nosniff" always;
     }
 
     # ── Security headers ──────────────────────────────────────────────────────
