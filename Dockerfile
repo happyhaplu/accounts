@@ -53,6 +53,10 @@ WORKDIR /app
 COPY --from=backend-builder /build-gour-accounts-backend/server .
 COPY --from=frontend-builder /build-gour-accounts-frontend/dist ./dist
 
+# Pre-create uploads directory — will be overridden by the uploads_data volume
+# mount in docker-compose.yaml, which persists logos across redeploys.
+RUN mkdir -p /app/uploads/logos
+
 # Final verification visible in Coolify deployment log
 RUN echo "=== FINAL IMAGE ===" && cat dist/index.html && echo ""
 

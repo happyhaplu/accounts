@@ -387,8 +387,8 @@ button { font-family: inherit; }
   letter-spacing: -0.5px; user-select: none;
 }
 .app-logo-img {
-  width: 38px; height: 38px; object-fit: contain;
-  border-radius: 8px;
+  width: 100%; height: 100%; object-fit: contain;
+  border-radius: 12px; padding: 6px;
 }
 
 /* Name */

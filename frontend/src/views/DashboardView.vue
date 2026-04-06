@@ -425,8 +425,8 @@ function formatDate(iso) {
   display: flex; align-items: center; justify-content: center;
 }
 .product-card-logo {
-  width: 44px; height: 44px; object-fit: contain; border-radius: 10px;
-  border: 1px solid #dadce0;
+  width: 52px; height: 52px; object-fit: contain; border-radius: 12px;
+  border: 1px solid #dadce0; padding: 4px; background: #fff;
 }
 .product-name  { font-weight: 600; font-size: 0.9rem; color: var(--text, #202124); }
 .product-badge {

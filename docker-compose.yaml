@@ -83,6 +83,9 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    volumes:
+      - uploads_data:/app/uploads
 
 volumes:
   postgres_data:
+  uploads_data:
