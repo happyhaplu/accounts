@@ -278,6 +278,19 @@
                 <p class="field-hint">Full callback URLs that this product is allowed to redirect to after launch. Scheme + host is used for CORS validation.</p>
               </div>
 
+              <!-- Billing Mode -->
+              <div class="mfield">
+                <label>Billing mode</label>
+                <select v-model="modal.form.billing_mode" :disabled="modal.saving" class="select-input">
+                  <option value="managed">Managed — Accounts handles billing (subscription required)</option>
+                  <option value="external">External — Product handles its own billing (always launches)</option>
+                </select>
+                <p class="field-hint">
+                  <strong>Managed:</strong> users must subscribe here before launch is allowed. &nbsp;
+                  <strong>External:</strong> users are always redirected to the product — it handles billing itself (e.g. Stripe).
+                </p>
+              </div>
+
               <!-- API Key (edit mode only) -->
               <div v-if="modal.isEdit" class="mfield mfield-apikey">
                 <label>API Key</label>
@@ -422,6 +435,7 @@ const emptyForm = () => ({
   logo_url:         '',
   logoFile:         null,
   logoPreview:      '',
+  billing_mode:     'managed',
 })
 
 const modal = reactive({
@@ -474,6 +488,7 @@ function openEdit(product) {
     logo_url:         product.logo_url ?? '',
     logoFile:         null,
     logoPreview:      product.logo_url ?? '',
+    billing_mode:     product.billing_mode || 'managed',
   })
   Object.assign(modal.errors, { name: '' })
 }
@@ -525,6 +540,7 @@ async function saveProduct() {
       const payload = {
         description:   modal.form.description.trim(),
         redirect_urls: redirectUrls,
+        billing_mode:  modal.form.billing_mode,
       }
       await adminAPI.updateProduct(modal.form.id, payload)
     } else {
@@ -532,6 +548,7 @@ async function saveProduct() {
         name:          modal.form.name.trim().toLowerCase(),
         description:   modal.form.description.trim(),
         redirect_urls: redirectUrls,
+        billing_mode:  modal.form.billing_mode,
       }
       const { data } = await adminAPI.createProduct(payload)
       savedProductId = data.product.id
@@ -1178,6 +1195,16 @@ async function confirmDeactivate() {
 .btn-upload.disabled { opacity: 0.5; cursor: not-allowed; }
 .logo-file-input { display: none; }
 .logo-file-name  { color: var(--text-muted); }
+
+/* Billing mode select */
+.select-input {
+  width: 100%; padding: 8px 12px; font-size: 0.875rem;
+  border: 1px solid #dadce0; border-radius: 6px;
+  background: #fff; color: #202124; outline: none;
+  transition: border-color 0.15s;
+}
+.select-input:focus   { border-color: #1a73e8; }
+.select-input:disabled { background: #f8f9fa; color: #80868b; }
 
 
 </style>

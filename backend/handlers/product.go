@@ -52,6 +52,7 @@ func CreateProduct(c *fiber.Ctx) error {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		LogoURL     string `json:"logo_url"`
+		BillingMode string `json:"billing_mode"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -68,10 +69,15 @@ func CreateProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusConflict).JSON(errJSON("A product with that name already exists"))
 	}
 
+	billingMode := strings.TrimSpace(req.BillingMode)
+	if billingMode != "external" {
+		billingMode = "managed"
+	}
 	product := models.Product{
 		Name:        req.Name,
 		Description: strings.TrimSpace(req.Description),
 		LogoURL:     strings.TrimSpace(req.LogoURL),
+		BillingMode: billingMode,
 		IsActive:    true,
 	}
 	if err := database.DB.Create(&product).Error; err != nil {
@@ -103,6 +109,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 		IsActive     *bool    `json:"is_active"`
 		RedirectURLs []string `json:"redirect_urls"`
 		LogoURL      *string  `json:"logo_url"`
+		BillingMode  *string  `json:"billing_mode"`
 	}
 	req := new(body)
 	if err := c.BodyParser(req); err != nil {
@@ -125,6 +132,12 @@ func UpdateProduct(c *fiber.Ctx) error {
 	}
 	if req.LogoURL != nil {
 		updates["logo_url"] = strings.TrimSpace(*req.LogoURL)
+	}
+	if req.BillingMode != nil {
+		bm := strings.TrimSpace(*req.BillingMode)
+		if bm == "external" || bm == "managed" {
+			updates["billing_mode"] = bm
+		}
 	}
 
 	if len(updates) > 0 {
@@ -434,13 +447,17 @@ func LaunchProduct(c *fiber.Ctx) error {
 	}
 	workspaceID := member.WorkspaceID
 
-	// Verify an active, non-expired subscription exists.
-	var sub models.Subscription
-	tx := database.DB.
-		Where("workspace_id = ? AND product_id = ? AND status = 'active'", workspaceID, product.ID).
-		First(&sub)
-	if tx.Error != nil || !sub.IsAccessible() {
-		return c.Status(fiber.StatusForbidden).JSON(errJSON("No active subscription for this product"))
+	// Check subscription — only enforce for "managed" billing products.
+	// Products with billing_mode = "external" handle their own billing
+	// and must always receive a launch token regardless of subscription status.
+	if product.BillingMode != "external" {
+		var sub models.Subscription
+		tx := database.DB.
+			Where("workspace_id = ? AND product_id = ? AND status = 'active'", workspaceID, product.ID).
+			First(&sub)
+		if tx.Error != nil || !sub.IsAccessible() {
+			return c.Status(fiber.StatusForbidden).JSON(errJSON("No active subscription for this product"))
+		}
 	}
 
 	// Sign a 7-day launch token containing identity + workspace.

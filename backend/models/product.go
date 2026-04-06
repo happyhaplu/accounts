@@ -79,6 +79,10 @@ type Product struct {
 	// LogoURL holds the relative path to the uploaded product logo, e.g. /uploads/logos/<id>.png
 	// Empty string means no logo has been uploaded (UI falls back to letter initial).
 	LogoURL      string    `gorm:"type:varchar(500);default:''"                   json:"logo_url"`
+	// BillingMode controls subscription enforcement at launch time.
+	//   "managed"  (default) — accounts.gour.io enforces subscription; launch is blocked if unsubscribed.
+	//   "external" — product handles its own billing (e.g. Stripe); launch always succeeds.
+	BillingMode  string    `gorm:"type:varchar(20);not null;default:'managed'"     json:"billing_mode"`
 	// APIKey is the secret key given to each product for server-to-server calls.
 	// Format: gour_ce_<32 hex chars>  (e.g. gour_ce_a1b2c3...)
 	// Treat like a password — only shown in the Admin UI, never in public endpoints.
