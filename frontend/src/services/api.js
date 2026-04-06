@@ -132,10 +132,11 @@ export const adminAPI = {
   regenerateProductKey:   (id)       => adminAxios.post(`/admin/products/${id}/regenerate-key`),
   // Logo upload — send a FormData object with a "logo" file field.
   // Returns { product, logo_url }
+  // Do NOT set Content-Type manually — Axios must auto-set it with the
+  // multipart boundary (e.g. "multipart/form-data; boundary=----Xyz").
+  // Setting it manually strips the boundary and Fiber can't parse the file.
   uploadProductLogo: (id, formData) =>
-    adminAxios.post(`/admin/products/${id}/logo`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    adminAxios.post(`/admin/products/${id}/logo`, formData),
 
   // Users
   listUsers:             (params) => adminAxios.get('/admin/users',                  { params }),
