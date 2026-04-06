@@ -100,7 +100,12 @@ const adminAxios = axios.create({ baseURL: '/api/v1' })
 adminAxios.interceptors.request.use((config) => {
   const secret = sessionStorage.getItem('admin_secret')
   if (secret) config.headers['X-Admin-Secret'] = secret
-  config.headers['Content-Type'] = 'application/json'
+  // Only set JSON content-type for non-FormData requests.
+  // For FormData (e.g. logo upload) Axios must set it automatically so that
+  // the correct multipart boundary is included in the header.
+  if (!(config.data instanceof FormData)) {
+    config.headers['Content-Type'] = 'application/json'
+  }
   return config
 })
 
