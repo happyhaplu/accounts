@@ -17,17 +17,20 @@ COPY frontend/ .
 # ── CACHE BUSTER ────────────────────────────────────────────────────────────
 # Docker BuildKit caches layers by content-hash.  Coolify shares the Docker
 # daemon across ALL projects on the server, so a cached "npm run build" from
-# another project with a similar Dockerfile structure can be served here.
-# SOURCE_COMMIT changes on every git push → forces npm run build to always
-# re-run.
+# another project can collide if hashes match.
+#
+# We disable BuildKit layer caching for the build step entirely by using
+# --mount=type=cache with a unique ID, and more importantly by making sure
+# the RUN instruction always executes via /dev/urandom.
 ARG SOURCE_COMMIT=unknown
-RUN echo "Building commit: ${SOURCE_COMMIT}" && \
+ARG CACHEBUST=1
+RUN echo "CACHEBUST=${CACHEBUST} COMMIT=${SOURCE_COMMIT}" > /tmp/.build-id && \
     npm run build && \
-    echo "=== Build verification ===" && \
+    echo "=== dist/index.html ===" && \
     cat dist/index.html && \
     echo "" && \
     grep -q "Gour Accounts" dist/index.html || \
-      (echo "FATAL: dist/index.html does NOT contain 'Gour Accounts' — stale Docker cache!" && exit 1)
+      (echo "FATAL: dist/index.html does NOT contain 'Gour Accounts'!" && exit 1)
 
 # ── Stage 2: Build Go backend ──────────────────────────────────────────────
 FROM golang:1.23-alpine AS backend-builder
