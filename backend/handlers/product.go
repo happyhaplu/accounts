@@ -93,7 +93,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 	}
 
 	var product models.Product
-	if tx := database.DB.First(&product, "id = ?", id); tx.Error != nil {
+	if tx := database.DB.Where("id = ?", id.String()).First(&product); tx.Error != nil {
 		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
 	}
 
@@ -123,23 +123,31 @@ func UpdateProduct(c *fiber.Ctx) error {
 	if req.IsActive != nil {
 		updates["is_active"] = *req.IsActive
 	}
-	if req.RedirectURLs != nil {
-		updates["redirect_urls"] = req.RedirectURLs
-	}
 	if req.LogoURL != nil {
 		updates["logo_url"] = strings.TrimSpace(*req.LogoURL)
 	}
 
-	if len(updates) == 0 {
+	if len(updates) > 0 {
+		if err := database.DB.Model(&product).Updates(updates).Error; err != nil {
+			return serverError(c, "Failed to update product")
+		}
+	}
+
+	// redirect_urls uses gorm serializer:json — must be updated via struct field,
+	// not a raw map value, so GORM correctly JSON-encodes the slice for the text column.
+	if req.RedirectURLs != nil {
+		product.RedirectURLs = req.RedirectURLs
+		if err := database.DB.Model(&product).Select("redirect_urls").Updates(&product).Error; err != nil {
+			return serverError(c, "Failed to update redirect URLs")
+		}
+	}
+
+	if len(updates) == 0 && req.RedirectURLs == nil {
 		return badRequest(c, "No fields provided to update")
 	}
 
-	if err := database.DB.Model(&product).Updates(updates).Error; err != nil {
-		return serverError(c, "Failed to update product")
-	}
-
 	// Re-fetch to return fresh data (GORM's Updates won't reload json-serialized fields).
-	database.DB.First(&product, "id = ?", id)
+	database.DB.Where("id = ?", id.String()).First(&product)
 	return c.JSON(fiber.Map{"product": product})
 }
 
@@ -186,7 +194,7 @@ func UploadProductLogo(c *fiber.Ctx) error {
 	}
 
 	var product models.Product
-	if tx := database.DB.First(&product, "id = ?", id); tx.Error != nil {
+	if tx := database.DB.Where("id = ?", id.String()).First(&product); tx.Error != nil {
 		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
 	}
 
@@ -262,7 +270,7 @@ func PermanentDeleteProduct(c *fiber.Ctx) error {
 	}
 
 	var product models.Product
-	if tx := database.DB.First(&product, "id = ?", id); tx.Error != nil {
+	if tx := database.DB.Where("id = ?", id.String()).First(&product); tx.Error != nil {
 		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
 	}
 
@@ -294,7 +302,7 @@ func RegenerateProductAPIKey(c *fiber.Ctx) error {
 	}
 
 	var product models.Product
-	if tx := database.DB.First(&product, "id = ?", id); tx.Error != nil {
+	if tx := database.DB.Where("id = ?", id.String()).First(&product); tx.Error != nil {
 		return c.Status(fiber.StatusNotFound).JSON(errJSON("Product not found"))
 	}
 
