@@ -18,11 +18,8 @@ type Config struct {
 	DBName       string
 	JWTSecret    string
 	AllowOrigins string
-	// If true, default products are auto-seeded on startup.
-	// Keep false in production so registry is managed only via Admin UI.
-	SeedDefaultProducts bool
 
-	// ── Cross-app auth (Reach, Warmup, etc.) ──────────────────────
+	// ── Cross-app auth ───────────────────────────────────────────
 	Environment      string   // "development" | "production"
 	AccountsBaseURL  string   // e.g. https://accounts.gour.io
 	JWTIssuer        string   // iss claim — accounts.gour.io
@@ -66,7 +63,6 @@ func Load() *Config {
 		DBName:       getEnv("DB_NAME", "gour_accounts"),
 		JWTSecret:    getEnv("JWT_SECRET", "change-me-in-production"),
 		AllowOrigins: allowOrigins,
-		SeedDefaultProducts: getEnvBool("SEED_DEFAULT_PRODUCTS", false),
 
 		Environment:      getEnv("APP_ENV", getEnv("ENV", "development")),
 		AccountsBaseURL:  getEnv("ACCOUNTS_BASE_URL", getEnv("APP_URL", "http://localhost:5173")),
@@ -94,14 +90,6 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-func getEnvBool(key string, fallback bool) bool {
-	v := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
-	if v == "" {
-		return fallback
-	}
-	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
 // splitCSV splits a comma-separated string into a trimmed slice.

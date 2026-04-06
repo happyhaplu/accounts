@@ -92,12 +92,12 @@ describe('adminAPI.listProducts', () => {
 
 describe('adminAPI.createProduct', () => {
   it('POSTs to /admin/products', async () => {
-    await adminAPI.createProduct({ name: 'email-warmup' })
+    await adminAPI.createProduct({ name: 'test-product' })
     expect(lastCall().method).toBe('POST')
     expect(lastCall().url).toBe('/admin/products')
   })
   it('sends payload as body', async () => {
-    const payload = { name: 'reach', description: 'Reach out' }
+    const payload = { name: 'analytics', description: 'Analytics tool' }
     await adminAPI.createProduct(payload)
     expect(lastCall().data).toEqual(payload)
   })

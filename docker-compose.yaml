@@ -50,7 +50,7 @@ services:
 
       # ── CORS ──────────────────────────────────────────────────────
       # Only the accounts frontend needed here as a static origin.
-      # Product origins (warmup, reach, etc.) are loaded automatically
+      # Product origins are loaded automatically
       # from the product registry in the database at runtime.
       CORS_ALLOWED_ORIGINS:    "https://accounts.gour.io"
       ALLOW_ORIGINS:           "https://accounts.gour.io"

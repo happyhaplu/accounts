@@ -18,8 +18,8 @@ func TestProductContract_RequiredFields(t *testing.T) {
 	// Simulate the public product response shape (mirrors models.Product JSON tags)
 	product := map[string]interface{}{
 		"id":          "550e8400-e29b-41d4-a716-446655440000",
-		"name":        "email-warmup",
-		"description": "Warms up email sending reputation",
+		"name":        "test-product",
+		"description": "A test product for contract validation",
 		"is_active":   true,
 		"api_key":     "gour_ce_abc123xyz",
 		"created_at":  "2024-01-01T00:00:00Z",

@@ -57,54 +57,8 @@ func Connect(cfg *config.Config) {
 		log.Fatalf("❌ Failed to drop legacy table product_plans: %v", err)
 	}
 
-	if cfg.SeedDefaultProducts {
-		seedDefaultProducts()
-	}
 	ensureProductAPIKeys()
 	log.Println("✅ Database connected and migrations applied")
-}
-
-// seedDefaultProducts inserts a small starter registry for local/dev usage.
-// Production should keep this disabled and manage products from Admin UI.
-func seedDefaultProducts() {
-	defaults := []models.Product{
-		{
-			Name:        "email-warmup",
-			Description: "Email inbox warm-up to improve deliverability and sender reputation",
-			RedirectURLs: []string{
-				"http://localhost:3000/callback",
-				"https://warmup.gour.io/callback",
-			},
-		},
-		{
-			Name:        "reach",
-			Description: "LinkedIn automation and outreach — find leads, send connection requests, and manage campaigns at scale",
-			RedirectURLs: []string{
-				"http://localhost:4000/auth/callback",
-				"https://reach.gour.io/auth/callback",
-			},
-		},
-		{
-			Name:        "sendflow",
-			Description: "Multi-channel cold outreach — email sequencing, sender rotation, and deliverability management",
-			RedirectURLs: []string{
-				"http://localhost:3000/callback",
-				"https://sendflow.gour.io/callback",
-			},
-		},
-	}
-
-	for _, p := range defaults {
-		var existing models.Product
-		if DB.Where("name = ?", p.Name).First(&existing).Error == nil {
-			continue
-		}
-		if err := DB.Create(&p).Error; err != nil {
-			log.Printf("[seed] WARNING: could not insert product %q: %v", p.Name, err)
-		} else {
-			log.Printf("[seed] inserted product: %s", p.Name)
-		}
-	}
 }
 
 // ensureProductAPIKeys back-fills api_key for rows created before this field existed.

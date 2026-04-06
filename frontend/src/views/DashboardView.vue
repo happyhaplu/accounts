@@ -239,13 +239,8 @@ import { authAPI } from '../services/api'
 const auth = useAuthStore()
 
 // ── Product display meta ──────────────────────────────────────────────────
-const PRODUCT_META = {
-  'email-warmup': { icon: '🔥', displayName: 'Email Warmup' },
-  'cold_email':   { icon: '📧', displayName: 'Cold Email' },
-  'reach':        { icon: '🔗', displayName: 'Reach — LinkedIn Automation' },
-  'warmup':       { icon: '🌡️', displayName: 'Inbox Warmup' },
-  'sendflow':     { icon: '📨', displayName: 'SendFlow — Cold Outreach' },
-}
+// No hardcoded product meta — display names are derived from the slug.
+// Products are registered via Admin UI and fetched from the API.
 
 // ── State ─────────────────────────────────────────────────────────────────
 const rawProducts      = ref([])
@@ -258,8 +253,8 @@ const launchError      = ref('')
 const enrichedProducts = computed(() =>
   rawProducts.value.map(p => ({
     ...p,
-    icon:        PRODUCT_META[p.name]?.icon        ?? '🚀',
-    displayName: PRODUCT_META[p.name]?.displayName ?? p.name,
+    icon:        '🚀',
+    displayName: p.description || p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
     subscribed:  activeSubNames.value.has(p.name),
   }))
 )

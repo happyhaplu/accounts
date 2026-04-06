@@ -68,8 +68,8 @@ func TestAdminCreateProduct_Success(t *testing.T) {
 	app := testhelpers.NewApp()
 
 	payload, _ := json.Marshal(map[string]string{
-		"name":        "email-warmup",
-		"description": "Email deliverability warming tool",
+		"name":        "test-product",
+		"description": "A test product for integration tests",
 	})
 	req := httptest.NewRequest("POST", "/api/v1/admin/products", bytes.NewBuffer(payload))
 	req.Header.Set("Content-Type", "application/json")
@@ -82,7 +82,7 @@ func TestAdminCreateProduct_Success(t *testing.T) {
 	var body map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&body)
 	product := body["product"].(map[string]interface{})
-	assert.Equal(t, "email-warmup", product["name"])
+	assert.Equal(t, "test-product", product["name"])
 	assert.NotEmpty(t, product["id"])
 	assert.NotEmpty(t, product["api_key"], "api_key must be auto-generated")
 	assert.Equal(t, true, product["is_active"])

@@ -598,9 +598,6 @@ stripe-pricing-table { display: block; width: 100%; }
   display: flex; align-items: center; justify-content: center;
   background: var(--blue-light, #e8f0fe); color: var(--blue, #1a73e8);
 }
-.prod-icon[data-name="cold_email"] { background: #e8f0fe; color: #1a73e8; }
-.prod-icon[data-name="linkedin"]   { background: #e8f5e9; color: #1b7e34; }
-.prod-icon[data-name="warmup"]     { background: #fff3e0; color: #e65100; }
 
 .prod-info  { flex: 1; min-width: 0; }
 .prod-name  { font-size: 0.9rem; font-weight: 700; color: var(--text, #202124); }
@@ -622,7 +619,7 @@ stripe-pricing-table { display: block; width: 100%; }
 .btn-subscribe:hover:not(:disabled) { background: #1557b0; }
 .btn-subscribe:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* ── Pricing Cards (email-warmup) ───────────────────────────────────────── */
+/* ── Pricing Cards ───────────────────────────────────────────────────────── */
 .prod-entry-plans { border-bottom: none; padding-bottom: 1.5rem; }
 
 .pc-head {

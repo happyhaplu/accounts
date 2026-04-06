@@ -60,14 +60,9 @@ const slug        = route.params.slug
 const redirectUri = route.query.redirect_uri ?? ''
 
 // ── Display helpers ───────────────────────────────────────────────────────
-const PRODUCT_META = {
-  'email-warmup': 'Email Warmup',
-  'cold_email':   'Cold Email',
-  'reach':        'Reach — LinkedIn Automation',
-  'warmup':       'Inbox Warmup',
-  'sendflow':     'SendFlow — Cold Outreach',
-}
-const displayName = PRODUCT_META[slug] ?? slug
+// Product display name is derived from the slug — no hardcoded product names.
+// Admin registers products via the Admin UI; this view is generic.
+const displayName = slug.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
 const redirectHost = (() => {
   try { return new URL(redirectUri).hostname } catch { return '' }

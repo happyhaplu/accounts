@@ -74,7 +74,7 @@ const routes = [
     component: () => import('../views/ProductLaunchView.vue'),
   },
   // Logout — clears auth state and optionally redirects back to a product.
-  // Used by external products: /logout?redirect_uri=https://warmup.gour.io
+  // Used by external products: /logout?redirect_uri=https://app.example.com
   {
     path: '/logout',
     name: 'Logout',

@@ -195,13 +195,13 @@
                 <input
                   v-model="modal.form.name"
                   type="text"
-                  placeholder="e.g. email-warmup"
+                  placeholder="e.g. my-product"
                   :class="{ 'is-error': modal.errors.name }"
                   :readonly="modal.isEdit"
                   :disabled="modal.saving"
                 />
                 <p v-if="modal.errors.name" class="field-err">{{ modal.errors.name }}</p>
-                <p v-if="!modal.isEdit" class="field-hint">Lowercase letters, numbers, hyphens only (e.g. <code>email-warmup</code>). Cannot be changed after creation.</p>
+                <p v-if="!modal.isEdit" class="field-hint">Lowercase letters, numbers, hyphens only (e.g. <code>my-product</code>). Cannot be changed after creation.</p>
               </div>
 
               <!-- Description -->
@@ -221,7 +221,7 @@
                 <textarea
                   v-model="modal.form.redirectUrlsText"
                   rows="4"
-                  placeholder="http://localhost:3000/callback&#10;https://warmup.gour.io/callback"
+                  placeholder="http://localhost:3000/callback&#10;https://app.example.com/callback"
                   :disabled="modal.saving"
                   class="mono-input"
                 ></textarea>

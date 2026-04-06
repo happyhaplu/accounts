@@ -16,10 +16,10 @@ COPY frontend/ .
 
 # ── CACHE BUSTER ────────────────────────────────────────────────────────────
 # Docker BuildKit caches layers by content-hash.  Coolify shares the Docker
-# daemon across ALL projects (Warmup, Reach, Accounts, …), so a cached
-# "npm run build" from another project with a similar Dockerfile structure
-# can be served here.  SOURCE_COMMIT changes on every git push → forces
-# npm run build to always re-run.
+# daemon across ALL projects on the server, so a cached "npm run build" from
+# another project with a similar Dockerfile structure can be served here.
+# SOURCE_COMMIT changes on every git push → forces npm run build to always
+# re-run.
 ARG SOURCE_COMMIT=unknown
 RUN echo "Building commit: ${SOURCE_COMMIT}" && \
     npm run build && \

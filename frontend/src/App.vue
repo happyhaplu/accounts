@@ -139,13 +139,39 @@ const appsOpen    = ref(false)
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
-const apps = [
-  { name: 'Email Warmup', short: 'EW', gradient: 'linear-gradient(135deg,#ea4335,#fb8c00)', shadow: 'rgba(234,67,53,0.35)', url: '/products/email-warmup/launch', status: 'Active' },
-  { name: 'Reach',        short: 'RE', gradient: 'linear-gradient(135deg,#4285f4,#1a73e8)', shadow: 'rgba(66,133,244,0.35)', url: '/products/reach/launch',        status: 'Active' },
-  { name: 'SendFlow',     short: 'SF', gradient: 'linear-gradient(135deg,#7c3aed,#a855f7)', shadow: 'rgba(124,58,237,0.35)', url: '/products/sendflow/launch',     status: 'Active' },
-  { name: 'Cold Email',   short: 'CE', gradient: 'linear-gradient(135deg,#34a853,#137333)', shadow: 'rgba(52,168,83,0.35)',  url: '/products/cold_email/launch',   status: 'Coming soon' },
-  { name: 'LinkedIn',     short: 'LI', gradient: 'linear-gradient(135deg,#0077b5,#005582)', shadow: 'rgba(0,119,181,0.35)',  url: '/products/linkedin/launch',     status: 'Coming soon' },
+const apps = ref([])
+
+// Load products dynamically from the API so no product names are hardcoded.
+// Products are registered via Admin UI — this list updates automatically.
+import { authAPI } from './services/api'
+import { onMounted } from 'vue'
+
+const defaultGradients = [
+  { gradient: 'linear-gradient(135deg,#1a73e8,#4285f4)', shadow: 'rgba(26,115,232,0.35)' },
+  { gradient: 'linear-gradient(135deg,#ea4335,#fb8c00)', shadow: 'rgba(234,67,53,0.35)' },
+  { gradient: 'linear-gradient(135deg,#7c3aed,#a855f7)', shadow: 'rgba(124,58,237,0.35)' },
+  { gradient: 'linear-gradient(135deg,#34a853,#137333)', shadow: 'rgba(52,168,83,0.35)' },
+  { gradient: 'linear-gradient(135deg,#0077b5,#005582)', shadow: 'rgba(0,119,181,0.35)' },
 ]
+
+onMounted(async () => {
+  if (!auth.isAuthenticated) return
+  try {
+    const { data } = await authAPI.listProducts()
+    apps.value = (data.products ?? []).map((p, i) => {
+      const colors = defaultGradients[i % defaultGradients.length]
+      const short = p.name.replace(/-/g, ' ').split(' ').map(w => w[0]?.toUpperCase()).join('').slice(0, 2)
+      return {
+        name: p.description || p.name,
+        short,
+        gradient: colors.gradient,
+        shadow: colors.shadow,
+        url: `/products/${p.name}/launch`,
+        status: p.is_active ? 'Active' : 'Inactive',
+      }
+    })
+  } catch { /* products panel will just be empty */ }
+})
 
 const userInitial = computed(() => {
   const name = auth.user?.name
