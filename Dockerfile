@@ -20,47 +20,30 @@ WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ .
-# Do NOT pin GOARCH — let Go target the native arch of the build host
-# so the binary runs on both amd64 and arm64 Coolify servers.
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o server .
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 3: Runtime — nginx (serves SPA) + Go binary (API)
+# Stage 3: Runtime — single Go binary serves API + Vue SPA
+#
+# No nginx.  Fiber serves static files from ./dist and falls back to
+# index.html for Vue Router client-side routes.  Coolify's Traefik
+# handles TLS termination and reverse-proxying.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM nginx:1.25-alpine
+FROM alpine:3.19
 
-# ca-certificates → HTTPS outbound (SMTP, Stripe)
-# tzdata          → correct log timestamps
-# gettext         → envsubst for nginx config templating
-# wget            → Docker / Coolify health checks
-RUN apk --no-cache add ca-certificates tzdata gettext wget
+RUN apk --no-cache add ca-certificates tzdata curl
 
-# Remove the default nginx config so our startup script is the ONLY source
-# of truth for /etc/nginx/conf.d/default.conf — prevents any race where
-# the stock config is briefly active before docker-start.sh runs.
-RUN rm -f /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Go API binary
-COPY --from=backend-builder /app/server /app/server
+# Go binary
+COPY --from=backend-builder /app/server .
 
-# Vue SPA static files
-COPY --from=frontend-builder /app/dist /usr/share/nginx/html
+# Vue SPA — served by Fiber's app.Static()
+COPY --from=frontend-builder /app/dist ./dist
 
-# Nginx config template (BACKEND_URL substituted at startup by docker-start.sh)
-# Stored in /tmp — NOT in /etc/nginx/templates/ — so nginx:alpine's own
-# entrypoint never processes it (avoiding a double-substitution race where
-# it would substitute ${BACKEND_URL} with whatever is in the environment
-# at that moment, before docker-start.sh forces it to 127.0.0.1).
-COPY frontend/nginx.conf.template /tmp/nginx.conf.template
-
-# Startup script: fills nginx template, starts Go API, then runs nginx
-COPY docker-start.sh /docker-start.sh
-RUN chmod +x /docker-start.sh
-
-# nginx: 80  |  Go API: 8080 (internal, not exposed outside container)
-EXPOSE 80
+EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget -qO- http://localhost:80/ || exit 1
+    CMD curl -sf http://localhost:3000/api/v1/health || exit 1
 
-CMD ["/docker-start.sh"]
+CMD ["./server"]

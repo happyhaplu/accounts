@@ -2,6 +2,7 @@ package main
 
 import (
 "log"
+"os"
 
 "outcraftly/accounts/config"
 "outcraftly/accounts/database"
@@ -43,6 +44,26 @@ app.Use(cors.New(cors.Config{
 
 // Register all routes
 routes.Setup(app)
+
+// ── SPA static file serving (production) ─────────────────────────────────
+// In Docker the built Vue dist/ directory lives at ./dist alongside the
+// binary.  Fiber serves it directly — no nginx needed.
+// In local development this directory doesn't exist; the Vite dev server
+// on :5173 serves the frontend instead, so this block is skipped.
+if _, err := os.Stat("./dist/index.html"); err == nil {
+	log.Println("📁 Serving Vue SPA from ./dist")
+
+	// Serve static assets (JS, CSS, images, fonts).
+	app.Static("/", "./dist", fiber.Static{
+		Compress: true,
+	})
+
+	// SPA fallback: any path that didn't match an API route or a static
+	// file gets index.html so Vue Router can handle client-side routing.
+	app.Get("/*", func(c *fiber.Ctx) error {
+		return c.SendFile("./dist/index.html")
+	})
+}
 
 log.Printf("🚀 Gour Accounts API running on :%s", cfg.Port)
 log.Fatal(app.Listen(":" + cfg.Port))
