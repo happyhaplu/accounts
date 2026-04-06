@@ -27,8 +27,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      # PORT must match Coolify's ports_exposes (default 3000).
-      PORT:                   ${PORT:-3000}
+      # PORT is hardcoded to 3000 — it MUST match the traefik label below
+      # and Coolify's ports_exposes.  Do NOT override via Coolify env vars.
+      PORT:                   "3000"
 
       # ── Postgres ──────────────────────────────────────────────────
       DB_HOST:                ${DB_HOST:-db}
