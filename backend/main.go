@@ -2,7 +2,6 @@ package main
 
 import (
 "log"
-"mime"
 "os"
 "path/filepath"
 "strings"
@@ -16,6 +15,36 @@ import (
 "github.com/gofiber/fiber/v2/middleware/logger"
 stripe "github.com/stripe/stripe-go/v76"
 )
+
+// webMIME maps file extensions to MIME types for static asset serving.
+// We use a hardcoded map instead of Go's mime.TypeByExtension because
+// the system MIME database on Alpine Linux is missing/broken — .js files
+// were being served as text/html, causing browsers to reject them.
+var webMIME = map[string]string{
+".js":    "application/javascript; charset=utf-8",
+".mjs":   "application/javascript; charset=utf-8",
+".css":   "text/css; charset=utf-8",
+".html":  "text/html; charset=utf-8",
+".htm":   "text/html; charset=utf-8",
+".json":  "application/json; charset=utf-8",
+".svg":   "image/svg+xml",
+".png":   "image/png",
+".jpg":   "image/jpeg",
+".jpeg":  "image/jpeg",
+".gif":   "image/gif",
+".ico":   "image/x-icon",
+".webp":  "image/webp",
+".avif":  "image/avif",
+".woff":  "font/woff",
+".woff2": "font/woff2",
+".ttf":   "font/ttf",
+".eot":   "application/vnd.ms-fontobject",
+".map":   "application/json",
+".txt":   "text/plain; charset=utf-8",
+".xml":   "text/xml; charset=utf-8",
+".wasm":  "application/wasm",
+".pdf":   "application/pdf",
+}
 
 func main() {
 // Load config (reads .env)
@@ -78,8 +107,8 @@ if _, err := os.Stat("./dist/index.html"); err == nil {
 		// We use os.ReadFile + c.Send instead of c.SendFile to guarantee
 		// the correct MIME type — no reliance on fasthttp internals.
 		if data, readErr := os.ReadFile(fp); readErr == nil {
-			ext := filepath.Ext(fp)
-			if ct := mime.TypeByExtension(ext); ct != "" {
+			ext := strings.ToLower(filepath.Ext(fp))
+			if ct, ok := webMIME[ext]; ok {
 				c.Set("Content-Type", ct)
 			} else {
 				c.Set("Content-Type", "application/octet-stream")
