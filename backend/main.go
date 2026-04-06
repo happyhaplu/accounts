@@ -5,6 +5,7 @@ import (
 "mime"
 "os"
 "path/filepath"
+"strings"
 
 "outcraftly/accounts/config"
 "outcraftly/accounts/database"
@@ -53,7 +54,6 @@ routes.Setup(app)
 // In local development this directory doesn't exist; the Vite dev server
 // on :5173 serves the frontend instead, so this block is skipped.
 if _, err := os.Stat("./dist/index.html"); err == nil {
-	log.Println("📁 Serving Vue SPA from ./dist")
 
 	// Pre-read index.html once at startup (small, never changes at runtime).
 	indexHTML, err := os.ReadFile("./dist/index.html")
@@ -61,17 +61,34 @@ if _, err := os.Stat("./dist/index.html"); err == nil {
 		log.Fatalf("❌ Cannot read ./dist/index.html: %v", err)
 	}
 
+	// Startup verification — log what we're actually serving so we can
+	// confirm in Coolify logs that the correct build was deployed.
+	snippet := string(indexHTML)
+	if len(snippet) > 500 {
+		snippet = snippet[:500]
+	}
+	log.Printf("📁 Serving Vue SPA from ./dist\n--- index.html (first 500 chars) ---\n%s\n---", snippet)
+
 	app.Get("/*", func(c *fiber.Ctx) error {
 		// Build safe path inside dist/ (filepath.Clean resolves "..")
-		clean := filepath.Clean(c.Path())
-		fp := filepath.Join("dist", clean)
+		urlPath := filepath.Clean(c.Path())
+		fp := filepath.Join("dist", urlPath)
 
 		// Try to serve the real file with explicit Content-Type.
 		// We use os.ReadFile + c.Send instead of c.SendFile to guarantee
-		// the correct MIME type is set — no reliance on fasthttp internals.
+		// the correct MIME type — no reliance on fasthttp internals.
 		if data, readErr := os.ReadFile(fp); readErr == nil {
-			if ct := mime.TypeByExtension(filepath.Ext(fp)); ct != "" {
+			ext := filepath.Ext(fp)
+			if ct := mime.TypeByExtension(ext); ct != "" {
 				c.Set("Content-Type", ct)
+			} else {
+				c.Set("Content-Type", "application/octet-stream")
+			}
+
+			// Hashed assets (Vite adds content-hash to filenames) are
+			// immutable — let browsers cache them aggressively.
+			if strings.HasPrefix(urlPath, "/assets/") {
+				c.Set("Cache-Control", "public, max-age=31536000, immutable")
 			}
 			return c.Send(data)
 		}
@@ -79,12 +96,16 @@ if _, err := os.Stat("./dist/index.html"); err == nil {
 		// Missing file WITH a file extension (.js, .css, .png, …) → 404.
 		// This prevents serving index.html (text/html) for a missing .js
 		// asset, which browsers reject as a MIME-type mismatch.
-		if filepath.Ext(clean) != "" {
+		if filepath.Ext(urlPath) != "" {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 
 		// No extension → Vue Router client-side route → serve index.html.
+		// no-cache ensures browsers always revalidate so they pick up new
+		// deploys immediately (the JS/CSS have content hashes in filenames,
+		// so those are cached aggressively — see above).
 		c.Set("Content-Type", "text/html; charset=utf-8")
+		c.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		return c.Send(indexHTML)
 	})
 }

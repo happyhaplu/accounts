@@ -1,0 +1,45 @@
+# ── Docker build context — include only what the Dockerfile needs ──────────
+# This file MUST exist to prevent Docker from reusing cached layers
+# from other projects on the same server (Coolify shares the Docker daemon).
+
+# Git
+.git
+.github
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Local dev files (not needed in Docker)
+.env
+.env.*
+!.env.coolify.example
+
+# Python / scripts
+.venv
+__pycache__
+scripts/
+*.py
+
+# Build artifacts (built fresh inside Docker)
+backend/bin/
+frontend/dist/
+frontend/node_modules/
+frontend/test-results/
+frontend/playwright-report/
+
+# Documentation
+README.md
+Makefile
+LICENSE
+
+# Test files (not needed in production image)
+frontend/e2e/
+frontend/playwright.config.js
+
+# Database schema (applied via migrations, not Docker)
+db/

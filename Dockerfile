@@ -1,38 +1,40 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 1: Build Vue / Vite frontend
+# Gour Accounts — Production Dockerfile
+#
+# Single Go binary serves API + Vue SPA.  Coolify's Traefik handles TLS.
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Build Vue / Vite frontend ──────────────────────────────────────
 FROM node:20-alpine AS frontend-builder
 
-WORKDIR /app
+# Use a UNIQUE workdir so Docker cannot match cached layers from other
+# projects (Warmup, Reach, etc.) that also use node:20-alpine + /app.
+WORKDIR /build-gour-accounts-frontend
+
 COPY frontend/package*.json ./
 RUN npm ci --prefer-offline
+
 COPY frontend/ .
 
-# ARG that changes per commit — busts the Docker layer cache so the
-# frontend is always rebuilt with the latest source code.
-ARG SOURCE_COMMIT
-RUN npm run build
+# Verify source is correct, then build.  Output shows in Coolify deploy log.
+RUN echo "=== Source check ===" && \
+    grep '<title>' index.html && \
+    npm run build && \
+    echo "=== Build output ===" && \
+    cat dist/index.html
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 2: Build Go backend
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Stage 2: Build Go backend ──────────────────────────────────────────────
 FROM golang:1.23-alpine AS backend-builder
 
 RUN apk --no-cache add git ca-certificates
 
-WORKDIR /app
+WORKDIR /build-gour-accounts-backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o server .
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 3: Runtime — single Go binary serves API + Vue SPA
-#
-# No nginx.  Fiber serves static files from ./dist and falls back to
-# index.html for Vue Router client-side routes.  Coolify's Traefik
-# handles TLS termination and reverse-proxying.
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Stage 3: Runtime — single Go binary + Vue dist ─────────────────────────
 FROM alpine:3.19
 
 RUN apk --no-cache add ca-certificates tzdata curl
@@ -40,10 +42,13 @@ RUN apk --no-cache add ca-certificates tzdata curl
 WORKDIR /app
 
 # Go binary
-COPY --from=backend-builder /app/server .
+COPY --from=backend-builder /build-gour-accounts-backend/server .
 
-# Vue SPA — served by Fiber's app.Static()
-COPY --from=frontend-builder /app/dist ./dist
+# Vue SPA — served by Fiber's app.Get("/*") handler
+COPY --from=frontend-builder /build-gour-accounts-frontend/dist ./dist
+
+# Verify dist at build time (visible in Coolify deployment log)
+RUN echo "=== FINAL IMAGE: dist/index.html ===" && cat dist/index.html
 
 EXPOSE 3000
 
