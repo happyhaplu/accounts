@@ -2,13 +2,68 @@ package models
 
 import (
 	"crypto/rand"
+	"database/sql/driver"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+// StringArray is a []string that persists as a JSON array in a text column.
+// It implements driver.Valuer and sql.Scanner so GORM uses it directly
+// without the serializer:json tag.
+//
+// The Scan method gracefully handles corrupted or legacy non-JSON values
+// (e.g. a raw URL string) by returning an empty slice instead of erroring,
+// so a bad DB value never causes a 404 or breaks the list endpoint.
+type StringArray []string
+
+func (s StringArray) Value() (driver.Value, error) {
+	if s == nil {
+		return "[]", nil
+	}
+	b, err := json.Marshal([]string(s))
+	if err != nil {
+		return "[]", nil
+	}
+	return string(b), nil
+}
+
+func (s *StringArray) Scan(src interface{}) error {
+	if src == nil {
+		*s = StringArray{}
+		return nil
+	}
+	var str string
+	switch v := src.(type) {
+	case string:
+		str = v
+	case []byte:
+		str = string(v)
+	default:
+		*s = StringArray{}
+		return nil
+	}
+	str = strings.TrimSpace(str)
+	if str == "" || str == "null" {
+		*s = StringArray{}
+		return nil
+	}
+	var result []string
+	if err := json.Unmarshal([]byte(str), &result); err != nil {
+		// Graceful fallback: corrupted or legacy non-JSON value in DB.
+		// Return empty slice instead of propagating an error that would
+		// cause every query touching this product to fail.
+		*s = StringArray{}
+		return nil
+	}
+	*s = StringArray(result)
+	return nil
+}
 
 // Product represents a single product offering in the Gour registry.
 // New products are added by inserting a row — no code changes required elsewhere.
@@ -16,9 +71,10 @@ type Product struct {
 	ID           uuid.UUID `gorm:"type:uuid;primaryKey"                          json:"id"`
 	Name         string    `gorm:"type:varchar(80);uniqueIndex;not null"          json:"name"`
 	Description  string    `gorm:"type:text"                                     json:"description"`
-	// RedirectURLs holds per-product callback URLs (JSON-encoded in a text column).
+	// RedirectURLs holds per-product callback URLs stored as a JSON array in a text column.
 	// Index 0 is used as the product's home URL shown in the Billing page.
-	RedirectURLs []string `gorm:"serializer:json;type:text;default:'[]'"          json:"redirect_urls"`
+	// StringArray implements driver.Valuer/sql.Scanner and handles corrupted values gracefully.
+	RedirectURLs StringArray `gorm:"type:text;default:'[]'"                      json:"redirect_urls"`
 	IsActive     bool      `gorm:"not null;default:true"                          json:"is_active"`
 	// LogoURL holds the relative path to the uploaded product logo, e.g. /uploads/logos/<id>.png
 	// Empty string means no logo has been uploaded (UI falls back to letter initial).

@@ -136,7 +136,7 @@ func UpdateProduct(c *fiber.Ctx) error {
 	// redirect_urls uses gorm serializer:json — must be updated via struct field,
 	// not a raw map value, so GORM correctly JSON-encodes the slice for the text column.
 	if req.RedirectURLs != nil {
-		product.RedirectURLs = req.RedirectURLs
+		product.RedirectURLs = models.StringArray(req.RedirectURLs)
 		if err := database.DB.Model(&product).Select("redirect_urls").Updates(&product).Error; err != nil {
 			return serverError(c, "Failed to update redirect URLs")
 		}
@@ -471,7 +471,7 @@ func LaunchProduct(c *fiber.Ctx) error {
 	if ru := strings.TrimSpace(c.Query("redirect_uri")); ru != "" {
 		// Security: only accept redirect_uri values whose scheme+host matches one
 		// of the product's configured redirect URLs. Prevents open-redirect attacks.
-		if !isAllowedRedirectURI(ru, product.RedirectURLs) {
+		if !isAllowedRedirectURI(ru, []string(product.RedirectURLs)) {
 			return c.Status(fiber.StatusBadRequest).JSON(errJSON(
 				"redirect_uri is not in the list of allowed URLs for this product",
 			))
