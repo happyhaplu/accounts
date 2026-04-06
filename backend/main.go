@@ -3,6 +3,7 @@ package main
 import (
 "log"
 "os"
+"path/filepath"
 
 "outcraftly/accounts/config"
 "outcraftly/accounts/database"
@@ -53,14 +54,15 @@ routes.Setup(app)
 if _, err := os.Stat("./dist/index.html"); err == nil {
 	log.Println("📁 Serving Vue SPA from ./dist")
 
-	// Serve static assets (JS, CSS, images, fonts).
-	app.Static("/", "./dist", fiber.Static{
-		Compress: true,
-	})
-
-	// SPA fallback: any path that didn't match an API route or a static
-	// file gets index.html so Vue Router can handle client-side routing.
+	// Single catch-all: serve the real file when it exists in ./dist,
+	// otherwise return index.html for Vue Router client-side routing.
+	// c.SendFile sets Content-Type from the extension (.js → application/
+	// javascript, .css → text/css, …) so MIME-type mismatches are impossible.
 	app.Get("/*", func(c *fiber.Ctx) error {
+		fp := filepath.Join("./dist", filepath.Clean(c.Path()))
+		if info, err := os.Stat(fp); err == nil && !info.IsDir() {
+			return c.SendFile(fp)
+		}
 		return c.SendFile("./dist/index.html")
 	})
 }
