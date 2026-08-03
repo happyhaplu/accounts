@@ -63,10 +63,10 @@ services:
 
       # ── Email (ZeptoMail SMTP relay) ──────────────────────────────
       SMTP_HOST:               "smtp.zeptomail.in"
-      SMTP_PORT:               "587"
+      SMTP_PORT:               "465"
       SMTP_USER:               "emailapikey"
-      SMTP_PASS:               "PHtE6r0IFunoj2EqoxAG4fTsFc6mY4koqb41KQMSuY1CDv4GSU0BrdgsxDG1+kovVqMTFKOemY5rtL+Uu+jWdD6+NGlEVGqyqK3sx/VYSPOZsbq6x00ctVsYfkTaU4PtdNZq0yXXu9jbNA=="
-      SMTP_FROM:               "info@gridworkit.online"
+      SMTP_PASS:               "PHtE6r0PEO3s3mcu80AB5f+6EcWmYdh4r+4xKVRGstpFW/YBTk1crop/lmOy/R98XPRBRfaTwY9q5LmZsu7QLDq+YGwYVWqyqK3sx/VYSPOZsbq6x00et1kdcEHZV4LncdZp0yTUvdrbNA=="
+      SMTP_FROM:               "info@gour.io"
       SMTP_REPLY_TO:           "happy.haplu@gmail.com"
 
       # ── Stripe (billing) ─────────────────────────────────────────

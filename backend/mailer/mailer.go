@@ -1,6 +1,7 @@
 package mailer
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/smtp"
@@ -8,6 +9,7 @@ import (
 )
 
 // Send delivers an HTML email via the SMTP server configured in .env.
+// It supports both SSL (port 465) and STARTTLS (port 587).
 func Send(to, subject, htmlBody string) error {
 	host := os.Getenv("SMTP_HOST")
 	port := os.Getenv("SMTP_PORT")
@@ -34,6 +36,44 @@ func Send(to, subject, htmlBody string) error {
 		"To: " + to + "\r\n" +
 		"Subject: " + subject + "\r\n\r\n" +
 		htmlBody
+
+	// Use SSL on port 465; otherwise STARTTLS.
+	if port == "465" {
+		conn, err := tls.Dial("tcp", addr, &tls.Config{
+			ServerName: host,
+		})
+		if err != nil {
+			return fmt.Errorf("smtp tls dial: %w", err)
+		}
+		defer conn.Close()
+
+		client, err := smtp.NewClient(conn, host)
+		if err != nil {
+			return fmt.Errorf("smtp new client: %w", err)
+		}
+		defer client.Quit()
+
+		if err := client.Auth(auth); err != nil {
+			return fmt.Errorf("smtp auth: %w", err)
+		}
+		if err := client.Mail(from); err != nil {
+			return fmt.Errorf("smtp mail: %w", err)
+		}
+		if err := client.Rcpt(to); err != nil {
+			return fmt.Errorf("smtp rcpt: %w", err)
+		}
+		wc, err := client.Data()
+		if err != nil {
+			return fmt.Errorf("smtp data: %w", err)
+		}
+		if _, err := wc.Write([]byte(msg)); err != nil {
+			return fmt.Errorf("smtp write: %w", err)
+		}
+		if err := wc.Close(); err != nil {
+			return fmt.Errorf("smtp data close: %w", err)
+		}
+		return nil
+	}
 
 	// Use the high-level smtp.SendMail which handles EHLO, STARTTLS,
 	// AUTH, DATA and QUIT in the correct order and closes cleanly.
